@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ferrimind — Rust 代码图谱</title>
+  <link rel="stylesheet" href="/styles/base.css">
+  <link rel="stylesheet" href="/styles/layout.css">
+  <link rel="stylesheet" href="/styles/components.css">
+  <link rel="stylesheet" href="/styles/graph.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="project-header">
+        <span class="name">Ferrimind</span>
+        <span class="project" id="project">加载中</span>
+      </div>
+
+      <div class="legend" aria-label="节点颜色图例">
+        <span class="legend-item"><span class="dot" style="background:var(--node-file)"></span>文件</span>
+        <span class="legend-item"><span class="dot" style="background:var(--node-module)"></span>模块</span>
+        <span class="legend-item"><span class="dot" style="background:var(--node-function)"></span>函数/方法</span>
+        <span class="legend-item"><span class="dot" style="background:var(--node-type)"></span>类型</span>
+        <span class="legend-item"><span class="dot" style="background:var(--node-impl)"></span>impl</span>
+        <span class="legend-item"><span class="dot" style="background:var(--node-other)"></span>其他</span>
+        <span class="legend-item"><span class="dot" style="background:var(--orange)"></span>字段</span>
+      </div>
+
+      <section class="section">
+        <h2>关系筛选</h2>
+        <div class="edge-filters" id="edgeFilters"></div>
+      </section>
+
+      <section class="section">
+        <h2>检索结果</h2>
+        <div class="list" id="results"></div>
+      </section>
+
+      <details class="section">
+        <summary>图谱概况</summary>
+        <div class="metrics" id="metrics"></div>
+      </details>
+
+      <select id="kindFilter" class="hidden"></select>
+      <select id="sourceFilter" class="hidden"></select>
+      <select id="certaintyFilter" class="hidden"></select>
+    </aside>
+
+    <main class="canvas-area">
+      <div class="search-bar">
+        <input id="search" placeholder="搜索函数、文件、模块或文档" autocomplete="off">
+        <div class="divider"></div>
+        <div class="toolbar-controls">
+          <label class="depth-control">深度
+            <select id="depthSelect">
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </label>
+          <button id="searchButton" class="btn primary">搜索</button>
+          <button id="reindexButton" class="btn ghost">重建</button>
+        </div>
+      </div>
+
+      <div class="canvas-wrap">
+        <div class="graph-state" id="graphLoading">
+          <div class="spinner"></div>
+          <p>正在加载图谱数据…</p>
+        </div>
+        <div class="graph-state hidden" id="graphEmpty">
+          <p>没有图谱数据</p>
+          <p class="sub">点击「重建」索引项目</p>
+        </div>
+        <div class="graph-state hidden" id="graphError">
+          <p class="err">加载失败</p>
+          <p class="sub" id="graphErrorMsg"></p>
+        </div>
+        <svg id="graph" role="img" aria-label="code graph"></svg>
+        <div class="graph-note" id="graphNote">选择左侧节点后查看关联图</div>
+        <div class="edge-legend" id="edgeLegend"></div>
+      </div>
+
+      <div class="status-bar">
+        <span class="pill" id="state">starting</span>
+        <span class="pill" id="latency">0 ms</span>
+        <span class="pill" id="graphPath">graph</span>
+      </div>
+
+      <div class="zoom-controls">
+        <button id="zoomInButton" class="btn-icon" title="放大">＋</button>
+        <button id="zoomOutButton" class="btn-icon" title="缩小">－</button>
+        <button id="fitButton" class="btn-icon" title="重置视图">⟲</button>
+      </div>
+
+      <aside class="detail-drawer">
+        <section class="section">
+          <div class="drawer-head">
+            <h2>选中项</h2>
+            <button id="closeDetailsButton" class="btn">关闭</button>
+          </div>
+          <div id="details" class="empty">选择节点或边</div>
+        </section>
+        <details class="section">
+          <summary>警告</summary>
+          <div id="warnings" class="list"></div>
+        </details>
+      </aside>
+    </main>
+  </div>
+
+  <script src="/src/core.js"></script>
+  <script src="/src/utils.js"></script>
+  <script src="/src/api.js"></script>
+  <script src="/src/graph-layout.js"></script>
+  <script src="/src/graph-render.js"></script>
+  <script src="/src/graph-interact.js"></script>
+  <script src="/src/sidebar.js"></script>
+  <script src="/src/details.js"></script>
+  <script src="/src/toolbar.js"></script>
+  <script src="/src/main.js"></script>
+</body>
+</html>

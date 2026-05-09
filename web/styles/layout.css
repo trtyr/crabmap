@@ -1,0 +1,342 @@
+.app {
+  display: flex;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Left sidebar */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  background: rgba(15, 17, 23, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border-subtle);
+  z-index: 10;
+}
+
+/* Main canvas area */
+.canvas-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
+/* Canvas wrapper - full screen graph */
+.canvas-wrap {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  background-color: var(--bg-deep);
+  background-image: radial-gradient(circle, var(--border-subtle) 1px, transparent 1px);
+  background-size: 24px 24px;
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* Floating search bar + controls combined */
+.search-bar {
+  position: absolute;
+  z-index: 20;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(600px, calc(100% - 32px));
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  background: rgba(24, 26, 34, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px rgba(108, 140, 255, 0.04), 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.search-bar input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.search-bar input:focus {
+  box-shadow: none;
+  border: none;
+}
+
+/* Divider inside search bar */
+.search-bar .divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* Toolbar controls merged into search bar */
+.toolbar-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Graph note - bottom left */
+.graph-note {
+  position: absolute;
+  z-index: 15;
+  left: 12px;
+  bottom: 12px;
+  max-width: min(560px, calc(100% - 320px));
+  background: rgba(15, 17, 23, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 12px;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status indicator - bottom right, next to zoom controls */
+.status-bar {
+  position: absolute;
+  z-index: 15;
+  bottom: 16px;
+  right: 56px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Zoom controls - bottom right */
+.zoom-controls {
+  position: absolute;
+  z-index: 20;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  gap: 4px;
+}
+
+/* Right detail drawer */
+.detail-drawer {
+  position: absolute;
+  z-index: 25;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  background: rgba(15, 17, 23, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-left: 1px solid var(--border-subtle);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.3);
+}
+
+.detail-drawer.open {
+  display: flex;
+}
+
+/* Legend - top bar below project name */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+/* Section headers in sidebar */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+details.section {
+  gap: 0;
+}
+
+details.section summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  list-style: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 0;
+}
+
+details.section summary::-webkit-details-marker {
+  display: none;
+}
+
+details.section summary::after {
+  content: "展开";
+  float: right;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+details.section[open] {
+  gap: 8px;
+}
+
+details.section[open] summary::after {
+  content: "收起";
+}
+
+.section h2 {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Project header in sidebar */
+.project-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-header .name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.project-header .project {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, monospace;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .sidebar {
+    width: 240px;
+    min-width: 240px;
+  }
+
+  .detail-drawer {
+    width: min(360px, calc(100vw - 320px));
+  }
+}
+
+@media (max-width: 760px) {
+  .app {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    max-height: 50vh;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .canvas-area {
+    min-height: 520px;
+  }
+
+  .detail-drawer,
+  .detail-drawer.open {
+    position: relative;
+    display: flex;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+    box-shadow: none;
+  }
+
+  .graph-note {
+    max-width: calc(100% - 24px);
+  }
+
+  .search-bar {
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    box-shadow: none;
+  }
+
+  .toolbar-controls {
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    justify-content: center;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .status-bar {
+    position: relative;
+    top: 0;
+    right: 0;
+    justify-content: flex-start;
+    padding: 8px 16px;
+  }
+
+  .zoom-controls {
+    position: relative;
+    bottom: 0;
+    right: 0;
+    padding: 8px 16px;
+  }
+}

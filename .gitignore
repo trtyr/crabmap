@@ -1,0 +1,5 @@
+target/
+.ferrimind/
+.codegraph/
+.opencode/
+*.json.gz
