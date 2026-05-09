@@ -2,6 +2,8 @@
 
 <p align="center">
   <strong>Rust Code Knowledge Graph for AI Navigation</strong>
+  <br>
+  <a href="README_zh.md">🇨🇳 中文文档</a>
 </p>
 
 <p align="center">

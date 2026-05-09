@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/rust-1.85%2B-orange.svg" alt="Rust">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
   <img src="https://img.shields.io/badge/status-active-brightgreen.svg" alt="Status">
-  <a href="README.md">🇬🇧 English</a>
+  <a href="README.md">🇬🇧 English</a> · <a href="AGENTS_zh.md">📖 开发文档</a>
 </p>
 
 ---
