@@ -8,7 +8,7 @@ repository = "https://github.com/trtyr/ferrimind"
 homepage = "https://github.com/trtyr/ferrimind"
 documentation = "https://github.com/trtyr/ferrimind"
 readme = "README.md"
-keywords = ["rust", "code-graph", "knowledge-graph", "static-analysis", "ai", "cli"]
+keywords = ["rust", "knowledge-graph", "static-analysis", "ai", "cli"]
 categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
