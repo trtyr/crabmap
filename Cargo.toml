@@ -2,6 +2,15 @@
 name = "ferrimind"
 version = "0.1.0"
 edition = "2024"
+description = "Rust code knowledge graph for AI navigation — index, query, and visualize your entire codebase"
+license = "MIT"
+license-file = "LICENSE"
+repository = "https://github.com/trtyr/ferrimind"
+homepage = "https://github.com/trtyr/ferrimind"
+documentation = "https://github.com/trtyr/ferrimind"
+readme = "README.md"
+keywords = ["rust", "code-graph", "knowledge-graph", "static-analysis", "ai", "cli"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0.100"
