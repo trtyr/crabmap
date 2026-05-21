@@ -359,6 +359,21 @@ fn run<const N: usize>(args: [&str; N]) -> Value {
     serde_json::from_slice(&output.stdout).unwrap()
 }
 
+/// Helper: index the fixture project, return (graph_path, temp_dir).
+/// Temp dir must stay alive to keep the graph file accessible.
+fn index_fixture() -> (std::path::PathBuf, tempfile::TempDir) {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sample");
+    let temp = tempfile::tempdir().unwrap();
+    let graph = temp.path().join("graph.json");
+    run([
+        "index",
+        root.to_str().unwrap(),
+        "--output",
+        graph.to_str().unwrap(),
+    ]);
+    (graph, temp)
+}
+
 fn copy_dir(from: impl AsRef<Path>, to: impl AsRef<Path>) {
     std::fs::create_dir_all(to.as_ref()).unwrap();
     for entry in std::fs::read_dir(from).unwrap() {
@@ -373,4 +388,268 @@ fn copy_dir(from: impl AsRef<Path>, to: impl AsRef<Path>) {
         }
         std::fs::copy(entry.path(), target).unwrap();
     }
+}
+
+// ---------------------------------------------------------------------------
+// 1:1 integration tests — one test per untested CLI command
+// ---------------------------------------------------------------------------
+
+// ---- query ----------------------------------------------------------------
+
+#[test]
+fn query_summary_returns_hot_symbols_and_project_info() {
+    let (graph, _temp) = index_fixture();
+    let out = run(["query", "summary", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(out["kind"], "summary");
+    assert!(out["hot_symbols"].is_array());
+    assert!(out["project"].is_object());
+    assert!(out["stats"].is_object());
+    assert!(out["top_files"].is_array());
+}
+
+#[test]
+fn query_symbols_lists_all_and_filters_by_kind() {
+    let (graph, _temp) = index_fixture();
+
+    let all = run(["query", "symbols", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(all["kind"], "symbols");
+    let items = all["items"].as_array().unwrap();
+    assert!(!items.is_empty());
+    for item in items {
+        assert!(item["id"].is_string(), "missing id: {item:#?}");
+        assert!(item["name"].is_string(), "missing name: {item:#?}");
+        assert!(item["kind"].is_string(), "missing kind: {item:#?}");
+    }
+
+    let fns = run([
+        "query",
+        "symbols",
+        "--kind",
+        "function",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
+    assert_eq!(fns["kind"], "symbols");
+    for item in fns["items"].as_array().unwrap() {
+        assert_eq!(item["kind"], "function");
+    }
+}
+
+#[test]
+fn query_callers_finds_upstream_callers() {
+    let (graph, _temp) = index_fixture();
+    let out = run([
+        "query",
+        "callers",
+        "load_config",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
+    assert_eq!(out["kind"], "callers");
+    let items = out["items"].as_array().unwrap();
+    assert!(
+        items
+            .iter()
+            .any(|item| item["node"]["name"] == "run_app"),
+        "expected run_app as caller of load_config: {items:#?}"
+    );
+}
+
+#[test]
+fn query_impact_returns_dependency_analysis() {
+    let (graph, _temp) = index_fixture();
+    let out = run([
+        "query",
+        "impact",
+        "load_config",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
+    assert_eq!(out["kind"], "impact");
+    assert!(out["root"].is_object());
+    assert!(out["dependencies"].is_array());
+    assert!(out["dependents"].is_array());
+    assert!(out["callers"].is_array());
+}
+
+#[test]
+fn query_path_finds_shortest_path_between_symbols() {
+    let (graph, _temp) = index_fixture();
+    let out = run([
+        "query",
+        "path",
+        "run_app",
+        "load_config",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
+    assert_eq!(out["kind"], "path");
+    assert_eq!(out["found"], true);
+    assert!(out["nodes"].is_array());
+    assert!(!out["nodes"].as_array().unwrap().is_empty());
+    assert!(out["from"].is_object());
+    assert!(out["to"].is_object());
+}
+
+#[test]
+fn query_export_dot_produces_digraph() {
+    let (graph, _temp) = index_fixture();
+    let out = run([
+        "query",
+        "export",
+        "--format",
+        "dot",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
+    assert_eq!(out["kind"], "dot");
+    assert!(
+        out["content"]
+            .as_str()
+            .unwrap()
+            .starts_with("digraph"),
+        "expected dot output to start with 'digraph'"
+    );
+}
+
+#[test]
+fn query_export_json_produces_full_graph_data() {
+    let (graph, _temp) = index_fixture();
+    let out = run([
+        "query",
+        "export",
+        "--format",
+        "json",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
+    // JSON export is raw graph data — no "kind" field
+    assert!(out["nodes"].is_array());
+    assert!(out["edges"].is_array());
+    assert!(out["project"].is_object());
+    assert!(
+        out["schema_version"].is_string() || out["schema_version"].is_number(),
+        "expected schema_version: {out:#?}"
+    );
+}
+
+// ---- nav ------------------------------------------------------------------
+
+#[test]
+fn nav_map_produces_token_budgeted_content() {
+    let (graph, _temp) = index_fixture();
+    let out = run(["nav", "map", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(out["kind"], "map");
+    assert!(!out["content"].as_str().unwrap().is_empty());
+    assert_eq!(out["budget"], 8000);
+}
+
+// ---- analyze --------------------------------------------------------------
+
+#[test]
+fn analyze_deps_shows_module_dependency_matrix() {
+    let (graph, _temp) = index_fixture();
+    let out = run(["analyze", "deps", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(out["kind"], "deps");
+    let items = out["items"].as_array().unwrap();
+    assert!(!items.is_empty());
+    for item in items {
+        assert!(item["from"].is_string());
+        assert!(item["to"].is_string());
+        assert!(item["weight"].is_number());
+    }
+}
+
+#[test]
+fn analyze_fanout_shows_file_fan_metrics() {
+    let (graph, _temp) = index_fixture();
+    let out = run(["analyze", "fanout", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(out["kind"], "fanout");
+    let items = out["items"].as_array().unwrap();
+    assert!(!items.is_empty());
+    for item in items {
+        assert!(item["file"].is_string());
+        assert!(item["fanin"].is_number());
+        assert!(item["fanout"].is_number());
+        assert!(item["total"].is_number());
+    }
+}
+
+#[test]
+fn analyze_tests_finds_test_candidates() {
+    let (graph, _temp) = index_fixture();
+    let out = run(["analyze", "tests", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(out["kind"], "tests");
+    assert!(out["candidate_tests"].is_array());
+    assert!(out["targets"].is_array());
+}
+
+#[test]
+fn analyze_hotspots_shows_git_churn() {
+    let (graph, _temp) = index_fixture();
+    let out = run(["analyze", "hotspots", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(out["kind"], "git");
+    assert!(out["hotspots"].is_array());
+    assert!(out["cochange"].is_array());
+}
+
+#[test]
+fn analyze_diff_shows_graph_diff_against_git() {
+    let (graph, _temp) = index_fixture();
+    let out = run(["analyze", "diff", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(out["kind"], "diff");
+    assert!(out["added_edges"].is_array());
+    assert!(out["removed_edges"].is_array());
+    assert!(out["changed_files"].is_array());
+}
+
+// ---- config ---------------------------------------------------------------
+
+#[test]
+fn config_show_returns_current_config() {
+    let out = run(["config"]);
+    assert_eq!(out["kind"], "config");
+    assert!(out["config"].is_object());
+    assert!(out["path"].is_string());
+}
+
+// ---- error handling -------------------------------------------------------
+
+#[test]
+fn error_symbol_not_found_suggests_alternatives() {
+    let (graph, _temp) = index_fixture();
+    let output = Command::new(env!("CARGO_BIN_EXE_ferrimind"))
+        .args([
+            "query",
+            "symbol",
+            "nonexistent_xyz",
+            "--graph",
+            graph.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        !output.status.success(),
+        "expected non-zero exit for missing symbol"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("not found"), "stderr: {stderr}");
+    assert!(stderr.contains("Did you mean?"), "stderr: {stderr}");
+}
+
+#[test]
+fn error_ambiguous_symbol_lists_matches() {
+    let (graph, _temp) = index_fixture();
+    // "save" is declared as both Store::save (trait) and MemoryStore::save (impl)
+    // The tool returns exit code 0 with kind="ambiguous" in JSON
+    let out = run(["query", "symbol", "save", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(out["kind"], "ambiguous");
+    let matches = out["matches"].as_array().unwrap();
+    assert_eq!(matches.len(), 2);
+    let names: Vec<&str> = matches
+        .iter()
+        .map(|m| m["qualified_name"].as_str().unwrap())
+        .collect();
+    assert!(names.contains(&"sample::Store::save"));
+    assert!(names.contains(&"sample::MemoryStore::save"));
 }

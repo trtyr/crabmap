@@ -1,70 +1,86 @@
 # ferrimind
 
-Rust code knowledge graph for AI navigation. Single crate, no workspace.
+**Generated:** 2026-05-21 · **Commit:** 2ebf59e · **Branch:** main
 
-## Build & Run
+Rust code knowledge graph for AI navigation. Single crate, edition 2024 (Rust ≥ 1.85), no workspace.
+
+## Commands
 
 ```bash
-cargo build                # debug
-cargo build --release      # optimized (recommended) — enables build.rs git-info + progress bar
+cargo build --release      # optimized — enables build.rs git-info + progress bar
 cargo run -- <subcommand>  # e.g. cargo run -- query search "load config"
 cargo test                 # 6 unit + 8 integration tests
 ```
 
-Edition 2024 — requires a recent stable Rust toolchain (≥ 1.85).
+`build.rs` captures git commit + build date at compile time. Falls back to `"no-git"` outside a repo.
 
-`build.rs` captures git commit and build date at compile time for `--version`. Falls back to `no-git` outside a repo.
+## Structure
+
+```
+ferrimind/
+├── src/           # 22 Rust modules, ~7500 lines — flat, all peers
+│   ├── model.rs   # Central hub — all modules depend on this
+│   ├── analyzer.rs  # Largest (1217L) — AST indexer
+│   └── web.rs     # HTTP server + 15× include_str! for web/ assets
+├── web/           # Embedded web UI — see web/AGENTS.md
+├── tests/
+│   ├── cli.rs     # Integration tests via std::process::Command
+│   └── fixtures/sample/  # Minimal Rust crate for test indexing
+└── build.rs       # Git info → cargo:rustc-env
+```
+
+## Where to Look
+
+| Task | Location | Notes |
+|---|---|---|
+| Add CLI command | `cli.rs` → `main.rs` → new/existing module | See "Adding a New CLI Command" below |
+| Change graph data model | `model.rs` | All modules depend on this — changes propagate |
+| Fix symbol resolution | `query.rs` | `find_nodes()`: exact id > qualified_name > short name > suffix |
+| Add indexing logic | `analyzer.rs` | syn AST walk, same-module priority for resolution |
+| Change web UI | `web/` directory | See `web/AGENTS.md` — no build step, include_str! |
+| Add LLM/RAG feature | `llm.rs`, `rag.rs`, `config.rs` | Config at `~/.config/ferrimind/config.json` |
+| Add static analysis | New module + `main.rs` dispatch | Under `analyze` command group |
+| Fix error messages | Any module | Uses `anyhow::Result` + `.context()` throughout |
+| Change terminal colors | `term.rs` | ANSI codes, auto-disabled when piped |
 
 ## Architecture
 
 Single binary, all Rust modules in `src/`:
 
-| Module | Purpose |
-|---|---|
-| `main.rs` | CLI entry, command dispatch, `index_project()` helper |
-| `cli.rs` | clap definitions: 6 top-level commands (`index`, `serve`, `query`, `nav`, `analyze`, `config`), each with nested subcommand enums |
-| `model.rs` | CodeGraph, Node, Edge, NodeKind, EdgeKind — core data model |
-| `analyzer.rs` | AST indexer: cargo metadata → syn walk → graph construction. Same-module priority for function/method resolution |
-| `store.rs` | Graph JSON load/save, default path resolution (`.ferrimind/ferrimind.json`) |
-| `query.rs` | Adjacency index + traversal (search, callers, callees, impact, path, file, module, symbol). `find_nodes()` with priority: exact id/qualified_name > short name > suffix |
-| `semantic.rs` | rust-analyzer LSP enrichment, auto-detected on PATH (opt-out via `--no-semantic`) |
-| `mir.rs` | rustc MIR text parsing for lowered calls (`--mir` flag) |
-| `ai.rs` | AI navigation commands (guide, entries, clusters, quality, health, map) |
-| `rag.rs` | Retrieval: lexical search → embedding similarity → reranking |
-| `llm.rs` | LLM client for `ask` command |
-| `config.rs` | Global LLM/RAG config read/write (`~/.config/ferrimind/config.json`) |
-| `report.rs` | GRAPH_REPORT.md and AGENT_GUIDE.md generation |
-| `health.rs` | Architectural risk detection (cycles, god modules, dead public symbols) |
-| `deps.rs` | Module dependency direction analysis |
-| `test_impact.rs` | Static test candidate discovery |
-| `gitintel.rs` | Git churn/ownership/co-change analysis (requires git repo) |
-| `drift.rs` | Graph diff against git base |
-| `repo_map.rs` | Token-budgeted repository map |
-| `export.rs` | DOT/Mermaid/JSON export |
-| `term.rs` | ANSI terminal colors (red, green, yellow, cyan, bold) with TTY detection |
-| `web.rs` | Embedded HTTP viewer: serves static web assets via `include_str!` |
+| Module | Lines | Purpose |
+|---|---|---|
+| `main.rs` | 411 | CLI entry, command dispatch, `index_project()` helper |
+| `cli.rs` | 334 | clap definitions: 6 top-level commands, nested subcommand enums |
+| `model.rs` | 297 | CodeGraph, Node, Edge, NodeKind, EdgeKind — core data model |
+| `analyzer.rs` | 1217 | AST indexer: cargo metadata → syn walk → graph construction |
+| `query.rs` | 836 | Adjacency index + traversal. `find_nodes()` 4-tier priority |
+| `semantic.rs` | 638 | rust-analyzer LSP enrichment, auto-detected on PATH |
+| `ai.rs` | 559 | AI navigation commands (guide, entries, clusters, quality, health, map) |
+| `web.rs` | 510 | Embedded HTTP viewer, 15× `include_str!` for web/ assets |
+| `rag.rs` | 386 | Retrieval: lexical search → embedding similarity → reranking |
+| `llm.rs` | 369 | LLM client for `ask` command |
+| `mir.rs` | 338 | rustc MIR text parsing for lowered calls |
+| `cli.rs` | 334 | clap argument definitions |
+| `report.rs` | 269 | GRAPH_REPORT.md and AGENT_GUIDE.md generation |
+| `health.rs` | 264 | Architectural risk detection (cycles, god modules, dead code) |
+| `config.rs` | 198 | Global LLM/RAG config (`~/.config/ferrimind/config.json`) |
+| `store.rs` | 169 | Gzip JSON load/save (`.ferrimind/ferrimind.json.gz`) |
+| `gitintel.rs` | 153 | Git churn/ownership/co-change (requires git repo) |
+| `deps.rs` | 128 | Module dependency direction analysis |
+| `drift.rs` | 128 | Graph diff against git base |
+| `repo_map.rs` | 116 | Token-budgeted repository map (~8k tokens) |
+| `test_impact.rs` | 92 | Static test candidate discovery |
+| `export.rs` | 80 | DOT/Mermaid/JSON export |
+| `term.rs` | 36 | ANSI terminal colors with TTY detection |
 
-### Web UI (`web/`)
+## Module Dependencies
 
-Dark theme, microkernel architecture. 15 modular files served via `include_str!`:
-
-| File | Purpose |
-|---|---|
-| `index.html` | HTML skeleton, sidebar (search, edge filter pills, metrics), canvas area (graph SVG, edge legend, status bar, zoom controls, detail drawer) |
-| `styles/base.css` | CSS variables, reset, typography |
-| `styles/layout.css` | Grid, panels, sidebar (260px), drawer |
-| `styles/components.css` | Buttons, cards, pills, inputs, edge filter pills |
-| `styles/graph.css` | SVG nodes/edges, edge labels, edge legend |
-| `src/core.js` | Microkernel: state store + event bus |
-| `src/utils.js` | Helpers, `nodeColor()`, `edgeColor()`, `edgeLegend()` |
-| `src/api.js` | HTTP client (`/api/status`, `/api/graph`, `/api/search`, `/api/symbol`, `/api/callees`, `/api/callers`, `/api/impact`, `/api/reindex`) |
-| `src/graph-layout.js` | Seeded positions + force-directed relaxation |
-| `src/graph-render.js` | SVG rendering: per-kind colored edges, trimmed line endpoints, arrow markers, per-kind edge legend, node circles with degree-based radius |
-| `src/graph-interact.js` | Drag/zoom/select |
-| `src/sidebar.js` | Search results, edge filter pills (Chinese labels + colored dots, localStorage), metrics |
-| `src/details.js` | Detail drawer + file symbol listing |
-| `src/toolbar.js` | Search, depth, reindex, status, auto-select `ferrimind::run` |
-| `src/main.js` | Bootstrap |
+```
+model.rs ← (all modules)
+web.rs ← analyzer, cli, mir, model, query, semantic, store, term
+main.rs ← cli (all subcommand structs)
+term.rs, cli.rs — dependency-free (no crate:: imports)
+```
 
 ## CLI Structure
 
@@ -121,21 +137,10 @@ ferrimind
 - Symbol/file/module "not found" errors include Levenshtein-based suggestions.
 - Format: `symbol 'inde_project' not found\nDid you mean?\n  • index_project`
 
-### Edge coloring (Web UI)
-- Edges colored by `kind`, not source: `calls`=blue, `declares`=amber, `uses_type`=purple, `contains`=emerald, `imports`=teal, `has_method`=pink, `returns`=orange, `module_file`=slate, `implements`=cyan, `possible_dispatch`=red.
-- `possible` edges: dashed stroke. `rust_analyzer`/`mir` edges: glow effect + thicker.
-- Arrow markers: 12×10px, white stroke, line endpoints trimmed to node radius so arrows sit outside circles.
-- Edge kind filter: toggle pills with Chinese labels + colored dots, stored in localStorage, defaults to `calls` only.
-
-### Layout (Web UI)
-- Force-directed: repulsion constant 2800, ideal edge length 210 (calls) / 155 (declares), 150 iterations for small graphs.
-- Node radius: 7–18px proportional to sqrt(degree).
-- Center node pinned; others pulled by gravity (0.0012 for neighborhood mode).
-
-### Web UI states
-- Three state overlays: loading spinner, empty graph message, error message.
-- Auto-detected from status: `starting` → loading, `failed` → error, no graph → empty.
-- Error handling in `loadGraph` and `refreshStatus` with fallback rendering.
+### Web UI
+- Dark theme, microkernel architecture (CG namespace: state store + event bus).
+- Edges colored by `kind` with Chinese-labeled filter pills. Force-directed layout.
+- See `web/AGENTS.md` for full frontend architecture, API endpoints, and conventions.
 
 ### Analyzer call resolution
 - Function calls: prefer same-module resolution before cross-module.

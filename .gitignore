@@ -2,4 +2,5 @@ target/
 .ferrimind/
 .codegraph/
 .opencode/
+.omo/
 *.json.gz
