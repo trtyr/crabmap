@@ -1,0 +1,15 @@
+pub(crate) const INDEX_HTML: &str = include_str!("../../web/index.html");
+pub(crate) const BASE_CSS: &str = include_str!("../../web/styles/base.css");
+pub(crate) const LAYOUT_CSS: &str = include_str!("../../web/styles/layout.css");
+pub(crate) const COMPONENTS_CSS: &str = include_str!("../../web/styles/components.css");
+pub(crate) const GRAPH_CSS: &str = include_str!("../../web/styles/graph.css");
+pub(crate) const CORE_JS: &str = include_str!("../../web/src/core.js");
+pub(crate) const UTILS_JS: &str = include_str!("../../web/src/utils.js");
+pub(crate) const API_JS: &str = include_str!("../../web/src/api.js");
+pub(crate) const GRAPH_LAYOUT_JS: &str = include_str!("../../web/src/graph-layout.js");
+pub(crate) const GRAPH_RENDER_JS: &str = include_str!("../../web/src/graph-render.js");
+pub(crate) const GRAPH_INTERACT_JS: &str = include_str!("../../web/src/graph-interact.js");
+pub(crate) const SIDEBAR_JS: &str = include_str!("../../web/src/sidebar.js");
+pub(crate) const DETAILS_JS: &str = include_str!("../../web/src/details.js");
+pub(crate) const TOOLBAR_JS: &str = include_str!("../../web/src/toolbar.js");
+pub(crate) const MAIN_JS: &str = include_str!("../../web/src/main.js");

@@ -77,7 +77,7 @@ status, graph, nodesById, nodePositions, rootId, selected, searchItems, view: {x
 - **No ES modules** — all files use global `CG` namespace via IIFE
 - **Chinese UI** — hardcoded zh-CN labels (就绪, 加载中, 调用, 声明, etc.)
 - **localStorage** — edge filter state persisted as `cg-edge-kinds`
-- **Auto-select** — on load, automatically selects `ferrimind::run` node
+- **Auto-select** — on load, automatically selects `crabmap::run` node
 - **Dark theme only** — CSS variables define the entire palette in `base.css`
 
 ## Edge Color Map

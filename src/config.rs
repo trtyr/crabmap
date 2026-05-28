@@ -49,10 +49,10 @@ impl Default for CodegraphConfig {
 }
 
 pub fn path() -> Result<PathBuf> {
-    let home = std::env::var("HOME").context("HOME is not set; cannot locate ferrimind config")?;
+    let home = std::env::var("HOME").context("HOME is not set; cannot locate crabmap config")?;
     Ok(PathBuf::from(home)
         .join(".config")
-        .join("ferrimind")
+        .join("crabmap")
         .join("config.json"))
 }
 
@@ -63,7 +63,7 @@ pub fn load() -> Result<CodegraphConfig> {
     }
     Ok(serde_json::from_slice(
         &std::fs::read(&path)
-            .with_context(|| format!("failed to read ferrimind config at {}", path.display()))?,
+            .with_context(|| format!("failed to read crabmap config at {}", path.display()))?,
     )?)
 }
 

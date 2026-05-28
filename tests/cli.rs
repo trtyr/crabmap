@@ -24,11 +24,23 @@ fn indexes_and_queries_rust_project() {
     );
     assert!(index["stats"]["by_source"]["inferred"].as_u64().unwrap() > 0);
 
-    let symbol = run(["query", "symbol", "run_app", "--graph", graph.to_str().unwrap()]);
+    let symbol = run([
+        "query",
+        "symbol",
+        "run_app",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
     assert_eq!(symbol["kind"], "symbol");
     assert_eq!(symbol["node"]["name"], "run_app");
 
-    let enum_symbol = run(["query", "symbol", "ConfigMode", "--graph", graph.to_str().unwrap()]);
+    let enum_symbol = run([
+        "query",
+        "symbol",
+        "ConfigMode",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
     assert_eq!(enum_symbol["kind"], "symbol");
     assert!(
         enum_symbol["outgoing"]
@@ -38,7 +50,13 @@ fn indexes_and_queries_rust_project() {
             .any(|item| item["node"]["kind"] == "enum_member" && item["node"]["name"] == "Fast")
     );
 
-    let callees = run(["query", "callees", "run_app", "--graph", graph.to_str().unwrap()]);
+    let callees = run([
+        "query",
+        "callees",
+        "run_app",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
     assert_eq!(callees["kind"], "callees");
     assert!(
         callees["items"]
@@ -48,7 +66,13 @@ fn indexes_and_queries_rust_project() {
             .any(|item| item["node"]["name"] == "load_config")
     );
 
-    let search = run(["query", "search", "config", "--graph", graph.to_str().unwrap()]);
+    let search = run([
+        "query",
+        "search",
+        "config",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
     assert_eq!(search["kind"], "search");
     assert!(!search["items"].as_array().unwrap().is_empty());
 
@@ -134,7 +158,7 @@ fn index_defaults_to_project_local_graph_path() {
 
     let index = run(["index", project.to_str().unwrap()]);
     assert_eq!(index["kind"], "index");
-    let output = project.join(".ferrimind/ferrimind.json.gz");
+    let output = project.join(".crabmap/crabmap.json.gz");
     assert_eq!(
         Path::new(index["output"].as_str().unwrap())
             .canonicalize()
@@ -209,10 +233,14 @@ fn index_all_discovers_cargo_projects_without_overwriting_graphs() {
     assert_eq!(indexed["indexed"].as_array().unwrap().len(), 2);
     assert!(
         temp.path()
-            .join("server/.ferrimind/ferrimind.json.gz")
+            .join("server/.crabmap/crabmap.json.gz")
             .exists()
     );
-    assert!(temp.path().join("agent/.ferrimind/ferrimind.json.gz").exists());
+    assert!(
+        temp.path()
+            .join("agent/.crabmap/crabmap.json.gz")
+            .exists()
+    );
 }
 
 #[test]
@@ -229,7 +257,13 @@ fn self_index_reports_file_module_and_store_callees_correctly() {
     ]);
     assert_eq!(index["kind"], "index");
 
-    let file = run(["query", "file", "src/main.rs", "--graph", graph.to_str().unwrap()]);
+    let file = run([
+        "query",
+        "file",
+        "src/main.rs",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
     let declares = file["declares"].as_array().unwrap();
     assert!(
         !declares.is_empty(),
@@ -239,20 +273,20 @@ fn self_index_reports_file_module_and_store_callees_correctly() {
     let module = run([
         "query",
         "module",
-        "ferrimind::model",
+        "crabmap::model",
         "--graph",
         graph.to_str().unwrap(),
     ]);
     let module_declares = module["declares"].as_array().unwrap();
     assert!(
         !module_declares.is_empty(),
-        "expected ferrimind::model declares to be non-empty: {module:#?}"
+        "expected crabmap::model declares to be non-empty: {module:#?}"
     );
 
     let callees = run([
         "query",
         "callees",
-        "ferrimind::store::load_many",
+        "crabmap::store::load_many",
         "--graph",
         graph.to_str().unwrap(),
     ]);
@@ -262,12 +296,20 @@ fn self_index_reports_file_module_and_store_callees_correctly() {
         .iter()
         .map(|item| item["node"]["qualified_name"].as_str().unwrap().to_string())
         .collect::<Vec<_>>();
-    assert!(callee_names.iter().any(|name| name == "ferrimind::store::load"));
-    assert!(callee_names.iter().any(|name| name == "ferrimind::store::merge"));
+    assert!(
+        callee_names
+            .iter()
+            .any(|name| name == "crabmap::store::load")
+    );
+    assert!(
+        callee_names
+            .iter()
+            .any(|name| name == "crabmap::store::merge")
+    );
     assert!(
         !callee_names
             .iter()
-            .any(|name| name == "ferrimind::repo_map::map" || name == "ferrimind::config::load"),
+            .any(|name| name == "crabmap::repo_map::map" || name == "crabmap::config::load"),
         "unexpected callees for store::load_many: {callee_names:?}"
     );
 }
@@ -346,7 +388,7 @@ fn semantic_mode_confirms_call_edges_when_rust_analyzer_is_available() {
 }
 
 fn run<const N: usize>(args: [&str; N]) -> Value {
-    let output = Command::new(env!("CARGO_BIN_EXE_ferrimind"))
+    let output = Command::new(env!("CARGO_BIN_EXE_crabmap"))
         .args(args)
         .output()
         .unwrap();
@@ -380,7 +422,7 @@ fn copy_dir(from: impl AsRef<Path>, to: impl AsRef<Path>) {
         let entry = entry.unwrap();
         let target = to.as_ref().join(entry.file_name());
         if entry.file_type().unwrap().is_dir() {
-            if entry.file_name() == "target" || entry.file_name() == ".ferrimind" {
+            if entry.file_name() == "target" || entry.file_name() == ".crabmap" {
                 continue;
             }
             copy_dir(entry.path(), target);
@@ -448,9 +490,7 @@ fn query_callers_finds_upstream_callers() {
     assert_eq!(out["kind"], "callers");
     let items = out["items"].as_array().unwrap();
     assert!(
-        items
-            .iter()
-            .any(|item| item["node"]["name"] == "run_app"),
+        items.iter().any(|item| item["node"]["name"] == "run_app"),
         "expected run_app as caller of load_config: {items:#?}"
     );
 }
@@ -504,10 +544,7 @@ fn query_export_dot_produces_digraph() {
     ]);
     assert_eq!(out["kind"], "dot");
     assert!(
-        out["content"]
-            .as_str()
-            .unwrap()
-            .starts_with("digraph"),
+        out["content"].as_str().unwrap().starts_with("digraph"),
         "expected dot output to start with 'digraph'"
     );
 }
@@ -618,7 +655,7 @@ fn config_show_returns_current_config() {
 #[test]
 fn error_symbol_not_found_suggests_alternatives() {
     let (graph, _temp) = index_fixture();
-    let output = Command::new(env!("CARGO_BIN_EXE_ferrimind"))
+    let output = Command::new(env!("CARGO_BIN_EXE_crabmap"))
         .args([
             "query",
             "symbol",
@@ -642,7 +679,13 @@ fn error_ambiguous_symbol_lists_matches() {
     let (graph, _temp) = index_fixture();
     // "save" is declared as both Store::save (trait) and MemoryStore::save (impl)
     // The tool returns exit code 0 with kind="ambiguous" in JSON
-    let out = run(["query", "symbol", "save", "--graph", graph.to_str().unwrap()]);
+    let out = run([
+        "query",
+        "symbol",
+        "save",
+        "--graph",
+        graph.to_str().unwrap(),
+    ]);
     assert_eq!(out["kind"], "ambiguous");
     let matches = out["matches"].as_array().unwrap();
     assert_eq!(matches.len(), 2);

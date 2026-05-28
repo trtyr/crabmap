@@ -87,7 +87,7 @@ CG.toolbar = {
 
       // Auto-select run as entry point
       const runNode = [...CG.getState().nodesById.values()].find(
-        n => n.qualified_name === 'ferrimind::run'
+        n => n.qualified_name === 'crabmap::run'
       );
       if (runNode) {
         CG.setState({ rootId: runNode.id });

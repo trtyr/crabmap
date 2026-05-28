@@ -1,4 +1,4 @@
-# ferrimind
+# crabmap
 
 **Generated:** 2026-05-21 · **Commit:** 2ebf59e · **Branch:** main
 
@@ -17,7 +17,7 @@ cargo test                 # 6 unit + 8 integration tests
 ## Structure
 
 ```
-ferrimind/
+crabmap/
 ├── src/           # 22 Rust modules, ~7500 lines — flat, all peers
 │   ├── model.rs   # Central hub — all modules depend on this
 │   ├── analyzer.rs  # Largest (1217L) — AST indexer
@@ -38,7 +38,7 @@ ferrimind/
 | Fix symbol resolution | `query.rs` | `find_nodes()`: exact id > qualified_name > short name > suffix |
 | Add indexing logic | `analyzer.rs` | syn AST walk, same-module priority for resolution |
 | Change web UI | `web/` directory | See `web/AGENTS.md` — no build step, include_str! |
-| Add LLM/RAG feature | `llm.rs`, `rag.rs`, `config.rs` | Config at `~/.config/ferrimind/config.json` |
+| Add LLM/RAG feature | `llm.rs`, `rag.rs`, `config.rs` | Config at `~/.config/crabmap/config.json` |
 | Add static analysis | New module + `main.rs` dispatch | Under `analyze` command group |
 | Fix error messages | Any module | Uses `anyhow::Result` + `.context()` throughout |
 | Change terminal colors | `term.rs` | ANSI codes, auto-disabled when piped |
@@ -63,8 +63,8 @@ Single binary, all Rust modules in `src/`:
 | `cli.rs` | 334 | clap argument definitions |
 | `report.rs` | 269 | GRAPH_REPORT.md and AGENT_GUIDE.md generation |
 | `health.rs` | 264 | Architectural risk detection (cycles, god modules, dead code) |
-| `config.rs` | 198 | Global LLM/RAG config (`~/.config/ferrimind/config.json`) |
-| `store.rs` | 169 | Gzip JSON load/save (`.ferrimind/ferrimind.json.gz`) |
+| `config.rs` | 198 | Global LLM/RAG config (`~/.config/crabmap/config.json`) |
+| `store.rs` | 169 | Gzip JSON load/save (`.crabmap/crabmap.json.gz`) |
 | `gitintel.rs` | 153 | Git churn/ownership/co-change (requires git repo) |
 | `deps.rs` | 128 | Module dependency direction analysis |
 | `drift.rs` | 128 | Graph diff against git base |
@@ -85,7 +85,7 @@ term.rs, cli.rs — dependency-free (no crate:: imports)
 ## CLI Structure
 
 ```
-ferrimind
+crabmap
 ├── index [PROJECT]        # Build graph (--all for workspace, --no-tests, --no-semantic, --mir)
 ├── serve [PROJECT]        # Start HTTP viewer + API (--port, --watch)
 ├── query                  # Read operations
@@ -152,7 +152,7 @@ ferrimind
 
 ## Key Conventions
 
-- **Default graph output**: `<project>/.ferrimind/ferrimind.json`. Use `--output` to override.
+- **Default graph output**: `<project>/.crabmap/crabmap.json`. Use `--output` to override.
 - **Fixture project**: `tests/fixtures/sample/` — minimal Rust crate used by all integration tests.
 - **Test pattern**: tests invoke the built binary via `std::process::Command`, index the fixture, assert on JSON responses.
 - All CLI output is JSON.

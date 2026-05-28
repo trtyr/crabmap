@@ -1,7 +1,7 @@
-# 🦀 Ferrimind
+# 🦀 Crabmap
 
 <p align="center">
-  <strong>Rust Code Knowledge Graph for AI Navigation</strong>
+  <strong>Rust code satellite map — index, query, and navigate your codebase</strong>
   <br>
   <a href="README_zh.md">🇨🇳 中文文档</a>
 </p>
@@ -9,20 +9,21 @@
 <p align="center">
   <img src="https://img.shields.io/badge/rust-1.85%2B-orange.svg" alt="Rust">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
+  <img src="https://img.shields.io/crates/v/crabmap.svg" alt="crates.io">
   <img src="https://img.shields.io/badge/status-active-brightgreen.svg" alt="Status">
 </p>
 
 ---
 
-**Ferrimind** builds a durable, queryable knowledge graph of any Rust project. Give it to an AI agent — it understands the entire codebase without reading files one by one.
+**Crabmap** builds a durable, queryable knowledge graph of any Rust project. Give it to an AI agent — it understands the entire codebase without reading files one by one.
 
 Think of it as a **satellite map** of your Rust codebase, while LSP (rust-analyzer) gives you a **microscope** for individual symbols.
 
 ---
 
-## ✨ Why Ferrimind?
+## ✨ Why Crabmap?
 
-| LSP / rust-analyzer | Ferrimind |
+| LSP / rust-analyzer | Crabmap |
 |:---|:---|
 | One symbol at a time | **Whole-project graph** in one shot |
 | Needs an open IDE | **Offline, portable JSON** file |
@@ -37,86 +38,86 @@ Think of it as a **satellite map** of your Rust codebase, while LSP (rust-analyz
 
 ```bash
 # Install
-cargo install ferrimind
+cargo install crabmap
 
 # Index a project
-ferrimind index /path/to/rust/project
+crabmap index /path/to/rust/project
 # ✓ indexed 9089 nodes, 14355 edges in 168 files
 
 # Get an AI-ready architecture map
-ferrimind nav map
+crabmap nav map
 
 # Search for anything
-ferrimind query search "handle_connection"
+crabmap query search "handle_connection"
 
 # Explore interactively in the browser
-ferrimind serve
+crabmap serve
 ```
 
 ---
 
 ## 📦 Commands
 
-### `ferrimind index` — Build the graph
+### `crabmap index` — Build the graph
 
 ```bash
-ferrimind index .                           # Index current project
-ferrimind index --all .                     # Discover & index all Cargo projects
-ferrimind index --no-tests                  # Skip test files
-ferrimind index --output custom.json.gz     # Custom output path (gzipped)
+crabmap index .                           # Index current project
+crabmap index --all .                     # Discover & index all Cargo projects
+crabmap index --no-tests                  # Skip test files
+crabmap index --output custom.json.gz     # Custom output path (gzipped)
 ```
 
-### `ferrimind query` — Ask questions
+### `crabmap query` — Ask questions
 
 ```bash
-ferrimind query stats                       # Node/edge counts
-ferrimind query search "config"             # Fuzzy text search
-ferrimind query symbol main                 # Inspect a symbol
-ferrimind query callees main --depth 3      # What does main call?
-ferrimind query callers load_config         # Who calls this?
-ferrimind query impact Runtime --depth 2    # Full dependency impact
-ferrimind query path main load_config       # Shortest call path
+crabmap query stats                       # Node/edge counts
+crabmap query search "config"             # Fuzzy text search
+crabmap query symbol main                 # Inspect a symbol
+crabmap query callees main --depth 3      # What does main call?
+crabmap query callers load_config         # Who calls this?
+crabmap query impact Runtime --depth 2    # Full dependency impact
+crabmap query path main load_config       # Shortest call path
 ```
 
-### `ferrimind nav` — AI-oriented navigation
+### `crabmap nav` — AI-oriented navigation
 
 ```bash
-ferrimind nav map           # Token-budgeted project overview (for LLMs)
-ferrimind nav guide         # Entry points + call chains
-ferrimind nav clusters      # Feature clusters by file
-ferrimind nav quality       # Graph confidence score
-ferrimind nav health        # Cycles, god modules, dead code
+crabmap nav map           # Token-budgeted project overview (for LLMs)
+crabmap nav guide         # Entry points + call chains
+crabmap nav clusters      # Feature clusters by file
+crabmap nav quality       # Graph confidence score
+crabmap nav health        # Cycles, god modules, dead code
 ```
 
-### `ferrimind analyze` — Static analysis
+### `crabmap analyze` — Static analysis
 
 ```bash
-ferrimind analyze deps      # Module dependency matrix
-ferrimind analyze fanout    # File-level fan-in / fan-out
-ferrimind analyze tests     # Test impact candidates
-ferrimind analyze hotspots  # Git churn hotspots
-ferrimind analyze diff      # Graph diff vs git base
+crabmap analyze deps      # Module dependency matrix
+crabmap analyze fanout    # File-level fan-in / fan-out
+crabmap analyze tests     # Test impact candidates
+crabmap analyze hotspots  # Git churn hotspots
+crabmap analyze diff      # Graph diff vs git base
 ```
 
-### `ferrimind serve` — Web UI
+### `crabmap serve` — Web UI
 
 ```bash
-ferrimind serve                         # Index + serve
-ferrimind serve --graph graph.json.gz   # Serve a pre-built graph
-ferrimind serve --watch                 # Auto-reindex on file changes
+crabmap serve                         # Index + serve
+crabmap serve --graph graph.json.gz   # Serve a pre-built graph
+crabmap serve --watch                 # Auto-reindex on file changes
 ```
 
-### `ferrimind config` — API Keys (for LLM features)
+### `crabmap config` — API Keys (for LLM features)
 
 ```bash
-ferrimind config --api-key sk-... --model gpt-4
+crabmap config --api-key sk-... --model gpt-4
 ```
 
 ---
 
 ## 🌐 Web UI
 
-Launch `ferrimind serve` and open `http://127.0.0.1:7878`:
+Launch `crabmap serve` and open `http://127.0.0.1:7878`:
 
 - **Graph visualization** — force-directed layout, color-coded by node/edge kind
 - **Interactive exploration** — click nodes to expand, drag to rearrange
@@ -130,7 +131,7 @@ Launch `ferrimind serve` and open `http://127.0.0.1:7878`:
 
 | Project | Nodes | Edges | Warnings | Quality |
 |:---|--:|--:|:--:|:--:|
-| ferrimind (self) | 899 | 1,676 | 0 | 99 |
+| crabmap (self) | 899 | 1,676 | 0 | 99 |
 | ripgrep | 9,089 | 14,355 | 0 | 96 |
 | tokio | 14,176 | 28,831 | 0 | 98 |
 
@@ -158,10 +159,10 @@ The output is a single JSON file (gzipped by default):
   "schema_version": 2,
   "project": { "root": ".", "packages": […] },
   "nodes": [
-    { "id": "function:ferrimind::run", "kind": "function", "name": "run", … }
+    { "id": "function:crabmap::run", "kind": "function", "name": "run", … }
   ],
   "edges": [
-    { "from": "function:ferrimind::main", "to": "function:ferrimind::run",
+    { "from": "function:crabmap::main", "to": "function:crabmap::run",
       "kind": "calls", "source": "ast", "certainty": "definite" }
   ]
 }
@@ -184,11 +185,11 @@ The output is a single JSON file (gzipped by default):
 ## 🛠 Building from Source
 
 ```bash
-git clone https://github.com/yourname/ferrimind.git
-cd ferrimind
+git clone https://github.com/trtyr/crabmap.git
+cd crabmap
 cargo build --release
-./target/release/ferrimind --version
-# ferrimind 0.1.0 (abc1234 2026-05-09)
+./target/release/crabmap --version
+# crabmap 0.1.1 (abc1234 2026-05-21)
 ```
 
 Requires Rust ≥ 1.85 (edition 2024).
@@ -209,7 +210,7 @@ src/
 ├── semantic.rs      # rust-analyzer enrichment
 ├── mir.rs           # MIR lowering
 ├── ai.rs            # AI nav commands
-├── config.rs        # Global config (~/.config/ferrimind/)
+├── config.rs        # Global config (~/.config/crabmap/)
 ├── term.rs          # ANSI terminal colors
 ├── health.rs        # Architecture risk detection
 └── …
@@ -218,6 +219,9 @@ web/
 ├── index.html
 ├── styles/          # CSS (dark theme)
 └── src/             # JS (microkernel architecture)
+
+skills/
+└── crabmap.md     # AI agent usage guide (skill file)
 ```
 
 ---

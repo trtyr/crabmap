@@ -1,8 +1,8 @@
 use crate::model::{CodeGraph, NodeKind, Project};
 use anyhow::{Context, Result};
+use flate2::Compression;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
-use flate2::Compression;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -11,8 +11,8 @@ pub fn default_path(path: Option<&Path>) -> Result<PathBuf> {
         return Ok(path.to_path_buf());
     }
     Ok(std::env::current_dir()?
-        .join(".ferrimind")
-        .join("ferrimind.json.gz"))
+        .join(".crabmap")
+        .join("crabmap.json.gz"))
 }
 
 pub fn default_project_path(project: &Path, output: Option<&Path>) -> Result<PathBuf> {
@@ -22,8 +22,8 @@ pub fn default_project_path(project: &Path, output: Option<&Path>) -> Result<Pat
     Ok(project
         .canonicalize()
         .with_context(|| format!("failed to resolve {}", project.display()))?
-        .join(".ferrimind")
-        .join("ferrimind.json.gz"))
+        .join(".crabmap")
+        .join("crabmap.json.gz"))
 }
 
 fn write_graph(path: &Path, graph: &CodeGraph) -> Result<()> {
@@ -47,8 +47,7 @@ pub fn save(path: Option<&Path>, graph: &CodeGraph) -> Result<()> {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("failed to create {}", parent.display()))?;
     }
-    write_graph(&path, graph)
-        .with_context(|| format!("failed to write {}", path.display()))?;
+    write_graph(&path, graph).with_context(|| format!("failed to write {}", path.display()))?;
     Ok(())
 }
 
@@ -58,15 +57,13 @@ pub fn save_project(project: &Path, output: Option<&Path>, graph: &CodeGraph) ->
         std::fs::create_dir_all(parent)
             .with_context(|| format!("failed to create {}", parent.display()))?;
     }
-    write_graph(&path, graph)
-        .with_context(|| format!("failed to write {}", path.display()))?;
+    write_graph(&path, graph).with_context(|| format!("failed to write {}", path.display()))?;
     Ok(path)
 }
 
 pub fn load(path: Option<&Path>) -> Result<CodeGraph> {
     let path = default_path(path)?;
-    read_graph(&path)
-        .with_context(|| format!("failed to read {}", path.display()))
+    read_graph(&path).with_context(|| format!("failed to read {}", path.display()))
 }
 
 pub fn load_many(paths: &[PathBuf]) -> Result<CodeGraph> {

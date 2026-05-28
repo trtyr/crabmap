@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "ferrimind",
+    name = "crabmap",
     version = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_DESC"), " ", env!("BUILD_DATE"), ")"),
-    about = "Rust code knowledge graph for AI navigation"
+    about = "Rust code satellite map — index, query, and navigate your codebase"
 )]
 pub struct Cli {
     #[command(subcommand)]

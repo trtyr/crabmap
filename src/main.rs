@@ -323,7 +323,10 @@ fn index_project(input: IndexRequest) -> Result<(model::CodeGraph, PathBuf)> {
     let warn_msg = if graph.warnings.is_empty() {
         String::new()
     } else if term::use_colors() {
-        format!(", {}", term::yellow(&format!("{} warnings", graph.warnings.len())))
+        format!(
+            ", {}",
+            term::yellow(&format!("{} warnings", graph.warnings.len()))
+        )
     } else {
         format!(", {} warnings", graph.warnings.len())
     };
@@ -385,7 +388,7 @@ fn collect_cargo_projects(
         let name = entry.file_name();
         if matches!(
             name.to_string_lossy().as_ref(),
-            ".git" | ".ferrimind" | ".worktrees" | "target" | "node_modules"
+            ".git" | ".crabmap" | ".worktrees" | "target" | "node_modules"
         ) {
             continue;
         }
@@ -398,7 +401,7 @@ fn graph_filename(project: &Path) -> String {
     project
         .file_name()
         .and_then(|value| value.to_str())
-        .unwrap_or("ferrimind")
+        .unwrap_or("crabmap")
         .chars()
         .map(|ch| {
             if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {

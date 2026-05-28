@@ -1,27 +1,28 @@
-# 🦀 Ferrimind
+# 🦀 Crabmap
 
 <p align="center">
-  <strong>给 AI 用的 Rust 代码知识图谱</strong>
+  <strong>Rust 代码卫星地图 — 索引、查询、导航你的代码库</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/rust-1.85%2B-orange.svg" alt="Rust">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
+  <img src="https://img.shields.io/crates/v/crabmap.svg" alt="crates.io">
   <img src="https://img.shields.io/badge/status-active-brightgreen.svg" alt="Status">
   <a href="README.md">🇬🇧 English</a> · <a href="AGENTS_zh.md">📖 开发文档</a>
 </p>
 
 ---
 
-**Ferrimind** 把任意 Rust 项目变成一份持久的、可查询的知识图谱。把它扔给 AI——AI 不需要逐文件阅读，就能理解整个代码库。
+**Crabmap** 把任意 Rust 项目变成一份持久的、可查询的知识图谱。把它扔给 AI——AI 不需要逐文件阅读，就能理解整个代码库。
 
-打个比方：**LSP 是显微镜**，让你看清一个细胞；**Ferrimind 是卫星地图**，让你一眼看清整座城市。
+打个比方：**LSP 是显微镜**，让你看清一个细胞；**Crabmap 是卫星地图**，让你一眼看清整座城市。
 
 ---
 
 ## ✨ 为什么不用 LSP？
 
-| LSP / rust-analyzer | Ferrimind |
+| LSP / rust-analyzer | Crabmap |
 |:---|:---|
 | 一次看一个符号 | **一张图看清整个项目** |
 | 必须开着 IDE | **离线便携的 JSON 文件** |
@@ -36,86 +37,86 @@
 
 ```bash
 # 安装
-cargo install ferrimind
+cargo install crabmap
 
 # 给项目建索引
-ferrimind index /path/to/rust/project
+crabmap index /path/to/rust/project
 # ✓ indexed 9089 nodes, 14355 edges in 168 files
 
 # 导出一份 AI 可读的架构地图
-ferrimind nav map
+crabmap nav map
 
 # 搜索任何符号
-ferrimind query search "handle_connection"
+crabmap query search "handle_connection"
 
 # 在浏览器里交互式探索
-ferrimind serve
+crabmap serve
 ```
 
 ---
 
 ## 📦 命令一览
 
-### `ferrimind index` — 构建图谱
+### `crabmap index` — 构建图谱
 
 ```bash
-ferrimind index .                           # 索引当前项目
-ferrimind index --all .                     # 发现并索引目录下所有 Cargo 项目
-ferrimind index --no-tests                  # 跳过测试文件
-ferrimind index --output custom.json.gz     # 自定义输出路径（gzip 压缩）
+crabmap index .                           # 索引当前项目
+crabmap index --all .                     # 发现并索引目录下所有 Cargo 项目
+crabmap index --no-tests                  # 跳过测试文件
+crabmap index --output custom.json.gz     # 自定义输出路径（gzip 压缩）
 ```
 
-### `ferrimind query` — 查询图谱
+### `crabmap query` — 查询图谱
 
 ```bash
-ferrimind query stats                       # 节点/边统计
-ferrimind query search "config"             # 模糊文本搜索
-ferrimind query symbol main                 # 查看某个符号的详情
-ferrimind query callees main --depth 3      # main 调用了谁？
-ferrimind query callers load_config         # 谁调用了它？
-ferrimind query impact Runtime --depth 2    # 完整依赖影响链
-ferrimind query path main load_config       # 两个符号间的最短调用路径
+crabmap query stats                       # 节点/边统计
+crabmap query search "config"             # 模糊文本搜索
+crabmap query symbol main                 # 查看某个符号的详情
+crabmap query callees main --depth 3      # main 调用了谁？
+crabmap query callers load_config         # 谁调用了它？
+crabmap query impact Runtime --depth 2    # 完整依赖影响链
+crabmap query path main load_config       # 两个符号间的最短调用路径
 ```
 
-### `ferrimind nav` — 给 AI 的导航
+### `crabmap nav` — 给 AI 的导航
 
 ```bash
-ferrimind nav map           # token 预算内的项目概览（给 LLM 用的）
-ferrimind nav guide         # 入口点 + 调用链
-ferrimind nav clusters      # 按文件的特征聚类
-ferrimind nav quality       # 图谱置信度评分
-ferrimind nav health        # 循环依赖、上帝模块、死代码检测
+crabmap nav map           # token 预算内的项目概览（给 LLM 用的）
+crabmap nav guide         # 入口点 + 调用链
+crabmap nav clusters      # 按文件的特征聚类
+crabmap nav quality       # 图谱置信度评分
+crabmap nav health        # 循环依赖、上帝模块、死代码检测
 ```
 
-### `ferrimind analyze` — 静态分析
+### `crabmap analyze` — 静态分析
 
 ```bash
-ferrimind analyze deps      # 模块依赖矩阵
-ferrimind analyze fanout    # 文件级扇入/扇出
-ferrimind analyze tests     # 测试影响候选
-ferrimind analyze hotspots  # Git 变更热点
-ferrimind analyze diff      # 与 git base 的图谱差异
+crabmap analyze deps      # 模块依赖矩阵
+crabmap analyze fanout    # 文件级扇入/扇出
+crabmap analyze tests     # 测试影响候选
+crabmap analyze hotspots  # Git 变更热点
+crabmap analyze diff      # 与 git base 的图谱差异
 ```
 
-### `ferrimind serve` — Web 可视化
+### `crabmap serve` — Web 可视化
 
 ```bash
-ferrimind serve                         # 索引 + 启动服务
-ferrimind serve --graph graph.json.gz   # 加载预先建好的图谱
-ferrimind serve --watch                 # 文件变更自动重建索引
+crabmap serve                         # 索引 + 启动服务
+crabmap serve --graph graph.json.gz   # 加载预先建好的图谱
+crabmap serve --watch                 # 文件变更自动重建索引
 ```
 
-### `ferrimind config` — 配置 API 密钥（LLM 功能）
+### `crabmap config` — 配置 API 密钥（LLM 功能）
 
 ```bash
-ferrimind config --api-key sk-... --model gpt-4
+crabmap config --api-key sk-... --model gpt-4
 ```
 
 ---
 
 ## 🌐 Web 界面
 
-运行 `ferrimind serve` 后打开 `http://127.0.0.1:7878`：
+运行 `crabmap serve` 后打开 `http://127.0.0.1:7878`：
 
 - **图谱可视化** — 力导向布局，节点和边颜色按类型区分
 - **交互探索** — 点击节点展开关联图，拖拽调整位置
@@ -129,7 +130,7 @@ ferrimind config --api-key sk-... --model gpt-4
 
 | 项目 | 节点 | 边 | Warnings | 质量分 |
 |:---|--:|--:|:--:|:--:|
-| ferrimind（自举） | 899 | 1,676 | 0 | 99 |
+| crabmap（自举） | 899 | 1,676 | 0 | 99 |
 | ripgrep | 9,089 | 14,355 | 0 | 96 |
 | tokio | 14,176 | 28,831 | 0 | 98 |
 
@@ -157,10 +158,10 @@ ferrimind config --api-key sk-... --model gpt-4
   "schema_version": 2,
   "project": { "root": ".", "packages": […] },
   "nodes": [
-    { "id": "function:ferrimind::run", "kind": "function", "name": "run", … }
+    { "id": "function:crabmap::run", "kind": "function", "name": "run", … }
   ],
   "edges": [
-    { "from": "function:ferrimind::main", "to": "function:ferrimind::run",
+    { "from": "function:crabmap::main", "to": "function:crabmap::run",
       "kind": "calls", "source": "ast", "certainty": "definite" }
   ]
 }
@@ -183,11 +184,11 @@ ferrimind config --api-key sk-... --model gpt-4
 ## 🛠 从源码构建
 
 ```bash
-git clone https://github.com/yourname/ferrimind.git
-cd ferrimind
+git clone https://github.com/trtyr/crabmap.git
+cd crabmap
 cargo build --release
-./target/release/ferrimind --version
-# ferrimind 0.1.0 (abc1234 2026-05-09)
+./target/release/crabmap --version
+# crabmap 0.1.1 (abc1234 2026-05-21)
 ```
 
 需要 Rust ≥ 1.85（edition 2024）。
@@ -208,7 +209,7 @@ src/
 ├── semantic.rs      # rust-analyzer 语义增强
 ├── mir.rs           # MIR 降级分析
 ├── ai.rs            # AI 导航命令
-├── config.rs        # 全局配置 (~/.config/ferrimind/)
+├── config.rs        # 全局配置 (~/.config/crabmap/)
 ├── term.rs          # ANSI 终端颜色
 ├── health.rs        # 架构风险检测
 └── …
@@ -217,6 +218,9 @@ web/
 ├── index.html
 ├── styles/          # CSS（深色主题）
 └── src/             # JS（微内核架构）
+
+skills/
+└── crabmap.md     # AI Agent 使用指南
 ```
 
 ---

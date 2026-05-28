@@ -1,4 +1,4 @@
-# ferrimind
+# crabmap
 
 Rust 代码知识图谱，为 AI 导航设计。单 crate，非 workspace。
 
@@ -25,14 +25,14 @@ Edition 2024 — 需要较新的 stable Rust 工具链（≥ 1.85）。
 | `cli.rs` | clap 定义：6 个顶层命令（`index`、`serve`、`query`、`nav`、`analyze`、`config`），各含嵌套子命令枚举 |
 | `model.rs` | CodeGraph、Node、Edge、NodeKind、EdgeKind — 核心数据模型 |
 | `analyzer.rs` | AST 索引器：cargo metadata → syn 遍历 → 图构建。函数/方法调用优先同模块匹配 |
-| `store.rs` | 图谱 JSON 加载/保存，默认路径（`.ferrimind/ferrimind.json.gz`） |
+| `store.rs` | 图谱 JSON 加载/保存，默认路径（`.crabmap/crabmap.json.gz`） |
 | `query.rs` | 邻接索引 + 遍历（search、callers、callees、impact、path、file、module、symbol）。`find_nodes()` 优先级：精确 id > 精确 qualified_name > 短名 > 后缀 |
 | `semantic.rs` | rust-analyzer LSP 增强，自动检测 PATH（可通过 `--no-semantic` 关闭） |
 | `mir.rs` | rustc MIR 文本解析（`--mir` 标志） |
 | `ai.rs` | AI 导航命令（guide、entries、clusters、quality、health、map） |
 | `rag.rs` | 检索：词法搜索 → 嵌入相似度 → 重排 |
 | `llm.rs` | LLM 客户端，供 `ask` 命令使用 |
-| `config.rs` | 全局 LLM/RAG 配置读写（`~/.config/ferrimind/config.json`） |
+| `config.rs` | 全局 LLM/RAG 配置读写（`~/.config/crabmap/config.json`） |
 | `report.rs` | GRAPH_REPORT.md 和 AGENT_GUIDE.md 生成 |
 | `health.rs` | 架构风险检测（循环依赖、上帝模块、死代码） |
 | `deps.rs` | 模块依赖方向分析 |
@@ -63,13 +63,13 @@ Edition 2024 — 需要较新的 stable Rust 工具链（≥ 1.85）。
 | `src/graph-interact.js` | 拖拽/缩放/选择 |
 | `src/sidebar.js` | 搜索结果、边筛选标签（中文标签 + 彩色圆点，localStorage）、指标 |
 | `src/details.js` | 详情抽屉 + 文件符号列表 |
-| `src/toolbar.js` | 搜索、深度、重建索引、状态、自动选择 `ferrimind::run` |
+| `src/toolbar.js` | 搜索、深度、重建索引、状态、自动选择 `crabmap::run` |
 | `src/main.js` | 引导启动 |
 
 ## CLI 结构
 
 ```
-ferrimind
+crabmap
 ├── index [项目路径]     # 构建图（--all 用于 workspace、--no-tests、--no-semantic、--mir）
 ├── serve [项目路径]     # 启动 HTTP 浏览器 + API（--port、--watch）
 ├── query               # 读操作
@@ -142,7 +142,7 @@ ferrimind
 
 ## 关键约定
 
-- **默认图输出**：`<project>/.ferrimind/ferrimind.json.gz`。使用 `--output` 覆盖。
+- **默认图输出**：`<project>/.crabmap/crabmap.json.gz`。使用 `--output` 覆盖。
 - **测试项目**：`tests/fixtures/sample/` — 所有集成测试使用的极简 Rust crate。
 - **测试模式**：测试通过 `std::process::Command` 调用编译后的二进制，索引测试项目，对 JSON 响应进行断言。
 - 所有 CLI 输出均为 JSON。

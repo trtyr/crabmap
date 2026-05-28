@@ -1,4 +1,4 @@
-use crate::model::{CodeGraph, EdgeKind, NodeKind};
+use crate::model::{CodeGraph, EdgeCertainty, EdgeKind, NodeKind};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 
@@ -49,33 +49,78 @@ fn file_dependencies(graph: &CodeGraph) -> BTreeMap<String, BTreeSet<String>> {
         .iter()
         .map(|node| (node.id.as_str(), node))
         .collect::<HashMap<_, _>>();
+    // Collect methods owned by impl blocks (trait impls) to exclude from cycle detection.
+    // These are unreliable because the analyzer resolves all `.from()` to one impl, etc.
+    let impl_methods: BTreeSet<&str> = graph
+        .edges
+        .iter()
+        .filter(|e| e.kind == EdgeKind::HasMethod && e.from.starts_with("impl:"))
+        .filter_map(|e| nodes.get(e.to.as_str()).map(|n| n.id.as_str()))
+        .collect();
     let mut deps = BTreeMap::<String, BTreeSet<String>>::new();
     for edge in &graph.edges {
-        if !matches!(
-            edge.kind,
-            EdgeKind::Calls | EdgeKind::Imports | EdgeKind::UsesType | EdgeKind::Returns
+        // Only use high-confidence edges for cycle detection.
+        // Method calls are unreliable due to name-based resolution
+        // (e.g., all `.from()` resolves to one `From` impl).
+        if !matches!(edge.kind, EdgeKind::Calls | EdgeKind::Imports) {
+            continue;
+        }
+        // Skip inferred/possible edges (from trait dispatch or method resolution)
+        if matches!(
+            edge.certainty,
+            EdgeCertainty::Inferred | EdgeCertainty::Possible
         ) {
             continue;
         }
-        let Some(from) = nodes
-            .get(edge.from.as_str())
-            .and_then(|node| node.file.as_deref())
-        else {
+        // Skip calls to trait impl methods (misresolved generic names like from/into/clone)
+        if impl_methods.contains(edge.to.as_str()) {
+            continue;
+        }
+        // Skip edges from/to module/file declaration nodes (mod declarations, not code deps)
+        let from_node = nodes.get(edge.from.as_str());
+        let to_node = nodes.get(edge.to.as_str());
+        match (from_node, to_node) {
+            (Some(f), Some(t))
+                if matches!(
+                    f.kind,
+                    NodeKind::Module | NodeKind::File | NodeKind::Project | NodeKind::Crate
+                ) || matches!(
+                    t.kind,
+                    NodeKind::Module | NodeKind::File | NodeKind::Project | NodeKind::Crate
+                ) =>
+            {
+                continue;
+            }
+            _ => {}
+        }
+        let (Some(from), Some(to)) = (from_node.and_then(|n| n.file.as_deref()), to_node.and_then(|n| n.file.as_deref())) else {
             continue;
         };
-        let Some(to) = nodes
-            .get(edge.to.as_str())
-            .and_then(|node| node.file.as_deref())
-        else {
-            continue;
-        };
-        if from != to {
-            deps.entry(from.to_string())
+        let from_module = module_path(from);
+        let to_module = module_path(to);
+        if from_module != to_module {
+            deps.entry(from_module.to_string())
                 .or_default()
-                .insert(to.to_string());
+                .insert(to_module.to_string());
         }
     }
     deps
+}
+
+/// Collapse sub-module file paths to their parent module directory.
+/// e.g. "src/web/server.rs" → "src/web", "src/model.rs" → "src/model.rs"
+fn module_path(file: &str) -> &str {
+    let path = std::path::Path::new(file);
+    if let Some(parent) = path.parent() {
+        let parent_str = parent.to_string_lossy();
+        // If parent is "src" or ".", use the full file path
+        if parent_str == "src" || parent_str == "." || parent_str.is_empty() {
+            return file;
+        }
+        // Otherwise collapse to the module directory
+        return Box::leak(parent_str.into_owned().into_boxed_str());
+    }
+    file
 }
 
 fn cycles(deps: &BTreeMap<String, BTreeSet<String>>, limit: usize) -> Vec<Value> {
@@ -125,33 +170,45 @@ fn path_to(
 }
 
 fn god_modules(graph: &CodeGraph, limit: usize) -> Vec<Value> {
-    let mut files = BTreeMap::<String, FileStats>::new();
+    let mut modules = BTreeMap::<String, ModuleStats>::default();
     for node in &graph.nodes {
         let Some(file) = node.file.as_deref() else {
             continue;
         };
-        let stats = files.entry(file.to_string()).or_default();
+        let key = module_path(file).to_string();
+        let stats = modules.entry(key).or_default();
         stats.nodes += 1;
-        if !matches!(
-            node.kind,
-            NodeKind::File | NodeKind::Module | NodeKind::Project | NodeKind::Crate
-        ) {
-            stats.symbols += 1;
+        match node.kind {
+            // Count "meaningful" symbols (logic-bearing code)
+            NodeKind::Function | NodeKind::Method | NodeKind::Trait | NodeKind::Impl | NodeKind::Macro => {
+                stats.meaningful += 1;
+                stats.symbols += 1;
+            }
+            // Structs and enums count as symbols but not meaningful (they're type defs)
+            NodeKind::Struct | NodeKind::Enum => {
+                stats.symbols += 1;
+            }
+            // Fields, variants, etc. don't count toward god module threshold
+            NodeKind::File | NodeKind::Module | NodeKind::Project | NodeKind::Crate => {}
+            _ => {
+                stats.symbols += 1;
+            }
         }
         if let Some(lines) = node.metrics.get("lines") {
-            stats.lines = stats.lines.max(*lines);
+            stats.lines += lines;
         }
     }
-    let mut items = files
+    let mut items = modules
         .into_iter()
-        .filter(|(_, stats)| stats.symbols >= 40 || stats.lines >= 500)
-        .map(|(file, stats)| {
+        .filter(|(_, stats)| stats.meaningful >= 40 || stats.lines >= 1200)
+        .map(|(module, stats)| {
             json!({
-                "file": file,
+                "module": module,
                 "lines": stats.lines,
                 "symbols": stats.symbols,
+                "meaningful": stats.meaningful,
                 "nodes": stats.nodes,
-                "reason": if stats.symbols >= 40 { "many symbols" } else { "large file" }
+                "reason": if stats.meaningful >= 40 { "many meaningful symbols" } else { "large module" }
             })
         })
         .collect::<Vec<_>>();
@@ -210,21 +267,21 @@ fn hot_symbols(graph: &CodeGraph, limit: usize) -> Vec<Value> {
 }
 
 fn possible_dead_public_symbols(graph: &CodeGraph, limit: usize) -> Vec<Value> {
-    let mut inbound = HashMap::<&str, usize>::new();
+    let mut connected = BTreeSet::<&str>::new();
     for edge in &graph.edges {
-        if matches!(
-            edge.kind,
-            EdgeKind::Calls | EdgeKind::UsesType | EdgeKind::Returns | EdgeKind::PossibleDispatch
-        ) {
-            *inbound.entry(edge.to.as_str()).or_default() += 1;
-        }
+        // Any edge touching a symbol means it's connected to the graph
+        connected.insert(edge.from.as_str());
+        connected.insert(edge.to.as_str());
     }
     graph
         .nodes
         .iter()
-        .filter(|node| node.visibility.as_deref().is_some_and(|visibility| visibility.starts_with("pub")))
+        .filter(|node| node.visibility.as_deref() == Some("pub"))
         .filter(|node| matches!(node.kind, NodeKind::Function | NodeKind::Method | NodeKind::Struct | NodeKind::Enum | NodeKind::Trait))
-        .filter(|node| inbound.get(node.id.as_str()).copied().unwrap_or_default() == 0)
+        // Exclude test fixtures
+        .filter(|node| !node.file.as_deref().is_some_and(|f| f.contains("fixtures")))
+        // A symbol is only dead if it has zero edges of any kind
+        .filter(|node| !connected.contains(node.id.as_str()))
         .take(limit)
         .map(|node| {
             json!({
@@ -257,8 +314,9 @@ fn label(score: usize) -> &'static str {
 }
 
 #[derive(Default)]
-struct FileStats {
+struct ModuleStats {
     lines: usize,
     nodes: usize,
     symbols: usize,
+    meaningful: usize,
 }
