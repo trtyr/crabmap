@@ -1,70 +1,80 @@
 # crabmap
 
-**Generated:** 2026-05-21 · **Commit:** 2ebf59e · **Branch:** main
+**Generated:** 2026-05-28 · **Commit:** 15b93e5 · **Branch:** main
 
-Rust code knowledge graph for AI navigation. Single crate, edition 2024 (Rust ≥ 1.85), no workspace.
+Rust code satellite map — index, query, and navigate your codebase. Single crate, edition 2024 (Rust ≥ 1.85), no workspace.
 
 ## Commands
 
 ```bash
 cargo build --release      # optimized — enables build.rs git-info + progress bar
 cargo run -- <subcommand>  # e.g. cargo run -- query search "load config"
-cargo test                 # 6 unit + 8 integration tests
+cargo test                 # 30 tests (6 unit + 24 integration)
 ```
 
-`build.rs` captures git commit + build date at compile time. Falls back to `"no-git"` outside a repo.
+`build.rs` captures git commit + build date at compile time. Falls back to `"no-git"` outside a repo. No CI/CD, no `[profile.*]` overrides — pure Cargo defaults.
 
 ## Structure
 
 ```
 crabmap/
-├── src/           # 22 Rust modules, ~7500 lines — flat, all peers
-│   ├── model.rs   # Central hub — all modules depend on this
-│   ├── analyzer.rs  # Largest (1217L) — AST indexer
-│   └── web.rs     # HTTP server + 15× include_str! for web/ assets
-├── web/           # Embedded web UI — see web/AGENTS.md
+├── src/                    # 53 Rust files, ~8700 lines
+│   ├── model.rs            # Central hub — all modules depend on this
+│   ├── analyzer/           # AST indexer (621L index, 355L builder, 164L helpers…)
+│   ├── query/              # Adjacency index + traversal + search
+│   ├── semantic/           # rust-analyzer LSP enrichment
+│   ├── ai/                 # AI nav: guide, entries, clusters, quality
+│   ├── web/                # HTTP server + include_str! web/ assets
+│   ├── rag/                # Lexical search → embedding → rerank
+│   └── *.rs                # Standalone modules: health, config, store, llm…
+├── web/                    # Embedded dark-theme graph viewer
+│   ├── index.html          # Shell — loads all JS/CSS in order
+│   ├── styles/ (4 files)   # Dark palette, layout, components, graph
+│   └── src/ (10 files)     # Microkernel CG namespace — see web/AGENTS.md
 ├── tests/
-│   ├── cli.rs     # Integration tests via std::process::Command
-│   └── fixtures/sample/  # Minimal Rust crate for test indexing
-└── build.rs       # Git info → cargo:rustc-env
+│   ├── cli.rs              # Integration tests via std::process::Command (24)
+│   └── fixtures/sample/    # Minimal Rust crate for test indexing
+├── docs/plantree/          # Plan tree: baseline, health-optimization plan
+├── build.rs                # Git info → cargo:rustc-env
+└── skills/crabmap.md       # AI skill instructions for this tool
 ```
 
 ## Where to Look
 
 | Task | Location | Notes |
 |---|---|---|
-| Add CLI command | `cli.rs` → `main.rs` → new/existing module | See "Adding a New CLI Command" below |
+| Add CLI command | `cli.rs` → `main.rs` → module | See "Adding a New CLI Command" below |
 | Change graph data model | `model.rs` | All modules depend on this — changes propagate |
-| Fix symbol resolution | `query.rs` | `find_nodes()`: exact id > qualified_name > short name > suffix |
-| Add indexing logic | `analyzer.rs` | syn AST walk, same-module priority for resolution |
-| Change web UI | `web/` directory | See `web/AGENTS.md` — no build step, include_str! |
-| Add LLM/RAG feature | `llm.rs`, `rag.rs`, `config.rs` | Config at `~/.config/crabmap/config.json` |
+| Fix symbol resolution | `query/find.rs` | `find_nodes()`: exact id > qualified_name > short name > suffix |
+| Add indexing logic | `analyzer/index.rs` | syn AST walk, same-module priority for resolution |
+| Change web UI | `web/` directory | See `web/AGENTS.md` — no build step, `include_str!` |
+| Add LLM/RAG feature | `llm.rs`, `rag/`, `config.rs` | Config at `~/.config/crabmap/config.json` |
 | Add static analysis | New module + `main.rs` dispatch | Under `analyze` command group |
 | Fix error messages | Any module | Uses `anyhow::Result` + `.context()` throughout |
 | Change terminal colors | `term.rs` | ANSI codes, auto-disabled when piped |
+| Check architecture health | `health.rs` | Cycles, god modules, dead code detection |
 
 ## Architecture
 
-Single binary, all Rust modules in `src/`:
+Single binary, 22 Rust modules:
 
 | Module | Lines | Purpose |
 |---|---|---|
-| `main.rs` | 411 | CLI entry, command dispatch, `index_project()` helper |
+| `main.rs` | 414 | CLI entry, command dispatch, `index_project()` helper |
 | `cli.rs` | 334 | clap definitions: 6 top-level commands, nested subcommand enums |
 | `model.rs` | 297 | CodeGraph, Node, Edge, NodeKind, EdgeKind — core data model |
-| `analyzer.rs` | 1217 | AST indexer: cargo metadata → syn walk → graph construction |
-| `query.rs` | 836 | Adjacency index + traversal. `find_nodes()` 4-tier priority |
-| `semantic.rs` | 638 | rust-analyzer LSP enrichment, auto-detected on PATH |
-| `ai.rs` | 559 | AI navigation commands (guide, entries, clusters, quality, health, map) |
-| `web.rs` | 510 | Embedded HTTP viewer, 15× `include_str!` for web/ assets |
-| `rag.rs` | 386 | Retrieval: lexical search → embedding similarity → reranking |
+| `analyzer/` | 1266 | AST indexer: cargo metadata → syn walk → graph construction (6 sub-modules) |
+| `query/` | 903 | Adjacency index + traversal + search + ranking (6 sub-modules) |
+| `semantic/` | 663 | rust-analyzer LSP enrichment, auto-detected on PATH (3 sub-modules) |
+| `ai/` | 588 | AI navigation: guide, entries, clusters, quality, map (5 sub-modules) |
+| `web/` | 628 | Embedded HTTP viewer, 15× `include_str!` for web/ assets (6 sub-modules) |
+| `rag/` | 427 | Retrieval: lexical search → embedding → rerank (6 sub-modules) |
 | `llm.rs` | 369 | LLM client for `ask` command |
 | `mir.rs` | 338 | rustc MIR text parsing for lowered calls |
-| `cli.rs` | 334 | clap argument definitions |
+| `health.rs` | 322 | Architectural risk detection (cycles, god modules, dead code) |
 | `report.rs` | 269 | GRAPH_REPORT.md and AGENT_GUIDE.md generation |
-| `health.rs` | 264 | Architectural risk detection (cycles, god modules, dead code) |
 | `config.rs` | 198 | Global LLM/RAG config (`~/.config/crabmap/config.json`) |
-| `store.rs` | 169 | Gzip JSON load/save (`.crabmap/crabmap.json.gz`) |
+| `store.rs` | 166 | Gzip JSON load/save (`.crabmap/crabmap.json.gz`) |
 | `gitintel.rs` | 153 | Git churn/ownership/co-change (requires git repo) |
 | `deps.rs` | 128 | Module dependency direction analysis |
 | `drift.rs` | 128 | Graph diff against git base |
@@ -77,9 +87,10 @@ Single binary, all Rust modules in `src/`:
 
 ```
 model.rs ← (all modules)
-web.rs ← analyzer, cli, mir, model, query, semantic, store, term
-main.rs ← cli (all subcommand structs)
+web/ ← analyzer, cli, mir, model, query, semantic, store, term
+main.rs → (all subcommand modules)
 term.rs, cli.rs — dependency-free (no crate:: imports)
+server modules (analyzer/, query/, semantic/, ai/, rag/) → model.rs only
 ```
 
 ## CLI Structure
@@ -145,6 +156,7 @@ crabmap
 ### Analyzer call resolution
 - Function calls: prefer same-module resolution before cross-module.
 - Method calls: only resolve to trait impl methods, not standalone functions.
+- Known limitation: calls inside macros (`eprintln!("{}", fn())`) are invisible to `syn` AST walk.
 
 ### Semantic enrichment
 - rust-analyzer auto-detected on PATH. Enabled by default; opt-out with `--no-semantic`.
@@ -152,17 +164,19 @@ crabmap
 
 ## Key Conventions
 
-- **Default graph output**: `<project>/.crabmap/crabmap.json`. Use `--output` to override.
+- **Default graph output**: `<project>/.crabmap/crabmap.json.gz`. Use `--output` to override.
 - **Fixture project**: `tests/fixtures/sample/` — minimal Rust crate used by all integration tests.
 - **Test pattern**: tests invoke the built binary via `std::process::Command`, index the fixture, assert on JSON responses.
+- **Config path**: `~/.config/crabmap/config.json` (not environment variables).
 - All CLI output is JSON.
 - Edge provenance: `source` (ast/rust_analyzer/mir/inferred) × `certainty` (definite/confirmed/inferred/possible).
+- **No environment variables** — all config goes through files.
 
 ## Testing
 
-- 6 unit tests in `src/query.rs` (ambiguous symbol resolution, file/module/symbol queries, path failure).
-- 8 integration tests in `tests/cli.rs` (index, query, semantic, MIR, `--all`, profiles, self-index).
-- All 14 tests pass. Run: `cargo test`.
+- 6 unit tests in `src/query/tests.rs` (symbol resolution, file/module/symbol queries, path failure).
+- 24 integration tests in `tests/cli.rs` (index, query, semantic, MIR, `--all`, profiles, self-index).
+- All 30 tests pass. Run: `cargo test`.
 
 ## Known Limitations
 
@@ -172,6 +186,7 @@ crabmap
 - Layout may become dense with 200+ visible nodes.
 - Large projects (10k+ nodes) untested — indexing performance and graph rendering may degrade.
 - proc macros and complex generics may produce incomplete call edges.
+- Calls inside macros (`eprintln!("{}", fn())`) are invisible to syn-based AST parsing; semantic enrichment (rust-analyzer) can fill some gaps.
 
 ## Adding a New CLI Command
 

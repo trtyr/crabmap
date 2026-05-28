@@ -2,7 +2,7 @@
 
 **Generated:** 2026-05-21 · **Commit:** 2ebf59e
 
-Dark-themed graph viewer embedded into the binary via `include_str!` in `src/web.rs`. No build step, no npm, no bundler — pure vanilla JS + CSS loaded via `<script>` tags.
+Dark-themed graph viewer embedded into the binary via `include_str!` in `src/web/assets.rs`. No build step, no npm, no bundler — pure vanilla JS + CSS loaded via `<script>` tags.
 
 ## Structure
 
@@ -31,7 +31,7 @@ web/
 
 | Task | File | Notes |
 |---|---|---|
-| Add API endpoint call | `api.js` + `web.rs` | Frontend client in api.js, backend handler in web.rs |
+| Add API endpoint call | `api.js` + `web/server.rs` | Frontend client in api.js, backend handler in web/server.rs |
 | Change graph layout | `graph-layout.js` | Force-directed params: repulsion 2800, edge length 210/155 |
 | Change node/edge rendering | `graph-render.js` | SVG creation, color maps per kind |
 | Add UI panel/widget | New JS + CSS | Register via `CG.register(init)`, add styles to components.css |
@@ -99,7 +99,7 @@ status, graph, nodesById, nodePositions, rootId, selected, searchItems, view: {x
 
 ## Gotchas
 
-- `include_str!` means **any web/ change requires `cargo build`** to take effect
+- `include_str!` means **any web/ change requires `cargo build`** to take effect (assets embedded in `src/web/assets.rs`)
 - Script load order in `index.html` is critical — `core.js` must be first
 - Toolbar polls `/api/status` every 1.5s — check network tab if UI seems stale
 - Force-directed layout runs 90–150 iterations client-side; large graphs (200+ nodes) may lag
