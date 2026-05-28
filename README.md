@@ -189,7 +189,7 @@ git clone https://github.com/trtyr/crabmap.git
 cd crabmap
 cargo build --release
 ./target/release/crabmap --version
-# crabmap 0.1.1 (abc1234 2026-05-21)
+# crabmap 0.1.2 (abc1234 2026-05-21)
 ```
 
 Requires Rust ≥ 1.85 (edition 2024).
