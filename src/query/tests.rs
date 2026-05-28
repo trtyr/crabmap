@@ -140,6 +140,7 @@ fn ambiguous_graph() -> CodeGraph {
             weight: 1,
             source: EdgeSource::Ast,
             certainty: EdgeCertainty::Definite,
+            call_style: None,
             profiles: vec![],
         }],
         warnings: vec![],
@@ -222,6 +223,7 @@ fn file_and_module_graph() -> CodeGraph {
                 weight: 1,
                 source: EdgeSource::Ast,
                 certainty: EdgeCertainty::Definite,
+                call_style: None,
                 profiles: vec![],
             },
             Edge {
@@ -233,6 +235,7 @@ fn file_and_module_graph() -> CodeGraph {
                 weight: 1,
                 source: EdgeSource::Ast,
                 certainty: EdgeCertainty::Definite,
+                call_style: None,
                 profiles: vec![],
             },
             Edge {
@@ -244,6 +247,7 @@ fn file_and_module_graph() -> CodeGraph {
                 weight: 1,
                 source: EdgeSource::Ast,
                 certainty: EdgeCertainty::Definite,
+                call_style: None,
                 profiles: vec![],
             },
             Edge {
@@ -255,6 +259,7 @@ fn file_and_module_graph() -> CodeGraph {
                 weight: 1,
                 source: EdgeSource::Ast,
                 certainty: EdgeCertainty::Definite,
+                call_style: None,
                 profiles: vec![],
             },
             Edge {
@@ -266,6 +271,7 @@ fn file_and_module_graph() -> CodeGraph {
                 weight: 1,
                 source: EdgeSource::Ast,
                 certainty: EdgeCertainty::Definite,
+                call_style: None,
                 profiles: vec![],
             },
         ],

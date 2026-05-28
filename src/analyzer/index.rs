@@ -11,8 +11,8 @@ use syn::visit::Visit;
 
 use super::builder::Builder;
 use super::helpers::{
-    docs, file_metrics, find_line, find_line_after, flatten_use_tree, location, module_name,
-    type_name, visibility,
+    docs, file_metrics, find_item_end_line, find_line, find_line_after, flatten_use_tree,
+    location, module_name, type_name, visibility,
 };
 use super::types::{IndexOptions, NodeInput, PendingEdge, ResolutionStrategy};
 use super::visitors::FunctionCollector;
@@ -75,7 +75,7 @@ pub fn index_project(project: &Path, options: IndexOptions) -> Result<CodeGraph>
                 .collect(),
             metrics: BTreeMap::new(),
         });
-        builder.edge(&project_id, &crate_id, EdgeKind::Contains, None, None);
+        builder.edge(&project_id, &crate_id, EdgeKind::Contains, None, None, None);
         let mut targets = Vec::new();
         let mut indexed_files = BTreeSet::new();
         // Phase 1: collect files
@@ -210,8 +210,8 @@ fn index_file(
         docs: Vec::new(),
         metrics: BTreeMap::new(),
     });
-    builder.edge(crate_id, &file_id, EdgeKind::Contains, None, None);
-    builder.edge(&file_id, &module_id, EdgeKind::ModuleFile, None, None);
+    builder.edge(crate_id, &file_id, EdgeKind::Contains, None, None, None);
+    builder.edge(&file_id, &module_id, EdgeKind::ModuleFile, None, None, None);
     for item in &syntax.items {
         index_item(
             builder,
@@ -238,6 +238,8 @@ fn index_item(
     match item {
         syn::Item::Fn(item) => {
             let qname = format!("{module_name}::{}", item.sig.ident);
+            let fn_start = find_line(source, &item.sig.ident.to_string());
+            let fn_end = find_item_end_line(source, fn_start);
             let id = builder.symbol(
                 NodeKind::Function,
                 item.sig.ident.to_string(),
@@ -247,6 +249,7 @@ fn index_item(
                 Some(item.sig.to_token_stream().to_string()),
                 visibility(&item.vis),
                 docs(&item.attrs),
+                Some(fn_end),
             );
             builder.edge(
                 owner_id,
@@ -254,10 +257,17 @@ fn index_item(
                 EdgeKind::Declares,
                 None,
                 Some(location(relative, source, &item.sig.ident.to_string())),
+                None,
             );
             collect_function_edges(builder, &id, relative, source, &item.sig, &item.block);
         }
         syn::Item::Struct(item) => {
+            let struct_end = if matches!(item.fields, syn::Fields::Named(_)) {
+                let s = find_line(source, &item.ident.to_string());
+                Some(find_item_end_line(source, s))
+            } else {
+                None
+            };
             let id = builder.symbol(
                 NodeKind::Struct,
                 item.ident.to_string(),
@@ -267,6 +277,7 @@ fn index_item(
                 Some(item.to_token_stream().to_string()),
                 visibility(&item.vis),
                 docs(&item.attrs),
+                struct_end,
             );
             builder.edge(
                 owner_id,
@@ -274,6 +285,7 @@ fn index_item(
                 EdgeKind::Declares,
                 None,
                 Some(location(relative, source, &item.ident.to_string())),
+                None,
             );
             for field in &item.fields {
                 if let Some(ident) = &field.ident {
@@ -286,6 +298,7 @@ fn index_item(
                         Some(field.ty.to_token_stream().to_string()),
                         visibility(&field.vis),
                         docs(&field.attrs),
+                        None,
                     );
                     builder.edge(
                         &id,
@@ -293,6 +306,7 @@ fn index_item(
                         EdgeKind::Declares,
                         None,
                         Some(location(relative, source, &ident.to_string())),
+                        None,
                     );
                     builder.type_use(&field_id, relative, source, &field.ty, EdgeKind::UsesType);
                     continue;
@@ -302,6 +316,7 @@ fn index_item(
         }
         syn::Item::Enum(item) => {
             let enum_line = find_line(source, &item.ident.to_string());
+            let enum_end = find_item_end_line(source, enum_line);
             let id = builder.symbol(
                 NodeKind::Enum,
                 item.ident.to_string(),
@@ -311,6 +326,7 @@ fn index_item(
                 Some(format!("enum {}", item.ident)),
                 visibility(&item.vis),
                 docs(&item.attrs),
+                Some(enum_end),
             );
             builder.edge(
                 owner_id,
@@ -318,6 +334,7 @@ fn index_item(
                 EdgeKind::Declares,
                 None,
                 Some(location(relative, source, &item.ident.to_string())),
+                None,
             );
             for variant in &item.variants {
                 let variant_name = variant.ident.to_string();
@@ -331,6 +348,7 @@ fn index_item(
                     Some(variant.to_token_stream().to_string()),
                     None,
                     docs(&variant.attrs),
+                    None,
                 );
                 builder.edge(
                     &id,
@@ -341,6 +359,7 @@ fn index_item(
                         file: relative.to_string(),
                         line: variant_line,
                     }),
+                    None,
                 );
                 for field in &variant.fields {
                     builder.type_use(&variant_id, relative, source, &field.ty, EdgeKind::UsesType);
@@ -348,6 +367,8 @@ fn index_item(
             }
         }
         syn::Item::Trait(item) => {
+            let trait_start = find_line(source, &item.ident.to_string());
+            let trait_end = find_item_end_line(source, trait_start);
             let trait_id = builder.symbol(
                 NodeKind::Trait,
                 item.ident.to_string(),
@@ -357,6 +378,7 @@ fn index_item(
                 Some(format!("trait {}", item.ident)),
                 visibility(&item.vis),
                 docs(&item.attrs),
+                Some(trait_end),
             );
             builder.edge(
                 owner_id,
@@ -364,6 +386,7 @@ fn index_item(
                 EdgeKind::Declares,
                 None,
                 Some(location(relative, source, &item.ident.to_string())),
+                None,
             );
             for trait_item in &item.items {
                 if let syn::TraitItem::Fn(method) = trait_item {
@@ -376,6 +399,7 @@ fn index_item(
                         Some(method.sig.to_token_stream().to_string()),
                         None,
                         docs(&method.attrs),
+                        None,
                     );
                     builder.edge(
                         &trait_id,
@@ -383,6 +407,7 @@ fn index_item(
                         EdgeKind::HasMethod,
                         None,
                         Some(location(relative, source, &method.sig.ident.to_string())),
+                        None,
                     );
                     for input in &method.sig.inputs {
                         if let syn::FnArg::Typed(input) = input {
@@ -403,11 +428,18 @@ fn index_item(
                     evidence: Some(location(relative, source, "use")),
                     source_file: Some(relative.to_string()),
                     resolution: ResolutionStrategy::Any,
+                    call_style: None,
                 });
             }
         }
         syn::Item::Mod(item) => {
             let qname = format!("{module_name}::{}", item.ident);
+            let mod_end = if item.content.is_some() {
+                let m = find_line(source, &item.ident.to_string());
+                Some(find_item_end_line(source, m))
+            } else {
+                None
+            };
             let id = builder.symbol(
                 NodeKind::Module,
                 item.ident.to_string(),
@@ -417,6 +449,7 @@ fn index_item(
                 Some(format!("mod {}", item.ident)),
                 visibility(&item.vis),
                 docs(&item.attrs),
+                mod_end,
             );
             builder.edge(
                 owner_id,
@@ -424,6 +457,7 @@ fn index_item(
                 EdgeKind::Declares,
                 None,
                 Some(location(relative, source, &item.ident.to_string())),
+                None,
             );
             if let Some((_, items)) = &item.content {
                 for nested in items {
@@ -441,6 +475,7 @@ fn index_item(
                 Some(item.to_token_stream().to_string()),
                 visibility(&item.vis),
                 docs(&item.attrs),
+                None,
             );
             builder.edge(
                 owner_id,
@@ -448,6 +483,7 @@ fn index_item(
                 EdgeKind::Declares,
                 None,
                 Some(location(relative, source, &item.ident.to_string())),
+                None,
             );
             builder.type_use(&id, relative, source, &item.ty, EdgeKind::UsesType);
         }
@@ -461,6 +497,7 @@ fn index_item(
                 Some(item.to_token_stream().to_string()),
                 visibility(&item.vis),
                 docs(&item.attrs),
+                None,
             );
             builder.edge(
                 owner_id,
@@ -468,6 +505,7 @@ fn index_item(
                 EdgeKind::Declares,
                 None,
                 Some(location(relative, source, &item.ident.to_string())),
+                None,
             );
         }
         syn::Item::Static(item) => {
@@ -480,6 +518,7 @@ fn index_item(
                 Some(item.to_token_stream().to_string()),
                 visibility(&item.vis),
                 docs(&item.attrs),
+                None,
             );
             builder.edge(
                 owner_id,
@@ -487,6 +526,7 @@ fn index_item(
                 EdgeKind::Declares,
                 None,
                 Some(location(relative, source, &item.ident.to_string())),
+                None,
             );
         }
         syn::Item::Macro(item) => {
@@ -504,6 +544,7 @@ fn index_item(
                 Some(item.to_token_stream().to_string()),
                 None,
                 Vec::new(),
+                None,
             );
             builder.edge(
                 owner_id,
@@ -511,6 +552,7 @@ fn index_item(
                 EdgeKind::Declares,
                 None,
                 Some(location(relative, source, &name)),
+                None,
             );
         }
         _ => {}
@@ -534,6 +576,8 @@ fn index_impl(
         .as_ref()
         .map(|name| format!("impl {name} for {self_ty}"))
         .unwrap_or_else(|| format!("impl {self_ty}"));
+    let impl_start = find_line(source, &self_ty);
+    let impl_end = find_item_end_line(source, impl_start);
     let impl_id = builder.symbol(
         NodeKind::Impl,
         impl_name.clone(),
@@ -543,6 +587,7 @@ fn index_impl(
         Some(item.to_token_stream().to_string()),
         None,
         Vec::new(),
+        Some(impl_end),
     );
     builder.edge(
         file_id,
@@ -550,6 +595,7 @@ fn index_impl(
         EdgeKind::Declares,
         None,
         Some(location(relative, source, "impl")),
+        None,
     );
     builder.pending.push(PendingEdge {
         from: impl_id.clone(),
@@ -559,6 +605,7 @@ fn index_impl(
         evidence: Some(location(relative, source, &self_ty)),
         source_file: Some(relative.to_string()),
         resolution: ResolutionStrategy::Any,
+        call_style: None,
     });
     if let Some(trait_name) = trait_name {
         builder.pending.push(PendingEdge {
@@ -569,10 +616,13 @@ fn index_impl(
             evidence: Some(location(relative, source, "impl")),
             source_file: Some(relative.to_string()),
             resolution: ResolutionStrategy::Any,
+            call_style: None,
         });
     }
     for impl_item in &item.items {
         if let syn::ImplItem::Fn(method) = impl_item {
+            let method_start = find_line(source, &method.sig.ident.to_string());
+            let method_end = find_item_end_line(source, method_start);
             let id = builder.symbol(
                 NodeKind::Method,
                 method.sig.ident.to_string(),
@@ -582,6 +632,7 @@ fn index_impl(
                 Some(method.sig.to_token_stream().to_string()),
                 visibility(&method.vis),
                 docs(&method.attrs),
+                Some(method_end),
             );
             builder.edge(
                 &impl_id,
@@ -589,6 +640,7 @@ fn index_impl(
                 EdgeKind::HasMethod,
                 None,
                 Some(location(relative, source, &method.sig.ident.to_string())),
+                None,
             );
             collect_function_edges(builder, &id, relative, source, &method.sig, &method.block);
         }

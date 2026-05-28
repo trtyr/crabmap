@@ -260,7 +260,9 @@ fn hot_symbols(graph: &CodeGraph, limit: usize) -> Vec<Value> {
                 "name": node.name,
                 "qualified_name": node.qualified_name,
                 "file": node.file,
-                "range": node.range
+                "range": node.range,
+                "signature": node.signature,
+                "docs": node.docs
             })
         })
         .collect()

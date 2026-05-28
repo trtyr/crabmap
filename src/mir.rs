@@ -279,6 +279,7 @@ fn add_edge(graph: &mut CodeGraph, from: &str, to: &str, label: &str, profile: &
         weight: 1,
         source: EdgeSource::Mir,
         certainty: EdgeCertainty::Confirmed,
+        call_style: None,
         profiles: vec![profile.to_string()],
     });
     EdgeResult::Inserted

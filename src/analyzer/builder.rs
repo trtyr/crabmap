@@ -74,6 +74,7 @@ impl Builder {
         signature: Option<String>,
         visibility: Option<String>,
         docs: Vec<String>,
+        end_line: Option<usize>,
     ) -> String {
         let line = super::helpers::find_line(source, &name);
         self.add_node(NodeInput {
@@ -83,7 +84,7 @@ impl Builder {
             file: Some(relative.to_string()),
             range: Some(crate::model::Range {
                 start_line: line,
-                end_line: line,
+                end_line: end_line.unwrap_or(line),
             }),
             visibility,
             signature,
@@ -102,6 +103,7 @@ impl Builder {
         signature: Option<String>,
         visibility: Option<String>,
         docs: Vec<String>,
+        end_line: Option<usize>,
     ) -> String {
         self.add_node(NodeInput {
             kind,
@@ -110,7 +112,7 @@ impl Builder {
             file: Some(relative.to_string()),
             range: Some(crate::model::Range {
                 start_line: line,
-                end_line: line,
+                end_line: end_line.unwrap_or(line),
             }),
             visibility,
             signature,
@@ -126,6 +128,7 @@ impl Builder {
         kind: EdgeKind,
         label: Option<String>,
         evidence: Option<crate::model::Location>,
+        call_style: Option<String>,
     ) {
         self.edge_with_source(
             from,
@@ -135,6 +138,7 @@ impl Builder {
             evidence,
             EdgeSource::Ast,
             EdgeCertainty::Definite,
+            call_style,
         )
     }
 
@@ -147,6 +151,7 @@ impl Builder {
         evidence: Option<crate::model::Location>,
         source: EdgeSource,
         certainty: EdgeCertainty,
+        call_style: Option<String>,
     ) {
         if from == to {
             return;
@@ -175,6 +180,7 @@ impl Builder {
             weight: 1,
             source,
             certainty,
+            call_style,
             profiles: vec![self.profile.clone()],
         });
     }
@@ -196,6 +202,7 @@ impl Builder {
                 evidence: Some(super::helpers::location(relative, source, &name)),
                 source_file: Some(relative.to_string()),
                 resolution: ResolutionStrategy::Any,
+                call_style: None,
             });
         }
     }
@@ -233,7 +240,7 @@ impl Builder {
     pub fn resolve_pending(&mut self) {
         for edge in std::mem::take(&mut self.pending) {
             if let Some(to) = self.resolve_pending_edge(&edge) {
-                self.edge(&edge.from, &to, edge.kind, edge.label, edge.evidence);
+                self.edge(&edge.from, &to, edge.kind, edge.label, edge.evidence, edge.call_style.clone());
             }
         }
     }
@@ -291,6 +298,7 @@ impl Builder {
                         None,
                         EdgeSource::Inferred,
                         EdgeCertainty::Possible,
+                        None,
                     );
                 }
             }

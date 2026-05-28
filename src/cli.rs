@@ -58,13 +58,11 @@ pub enum QueryCmd {
     Stats(GraphArg),
     Summary(SummaryArgs),
     Symbols(SymbolsArgs),
-    Symbol(SymbolArg),
-    File(FileArg),
-    Module(ModuleArg),
-    Callees(WalkArg),
-    Callers(WalkArg),
-    Impact(WalkArg),
-    Search(SearchArgs),
+    Inspect(InspectArgs),
+    Trace(TraceArgs),
+    Find(FindArgs),
+    Scope(ScopeArgs),
+    Impact(ImpactArgs),
     Path(PathArgs),
     Export(ExportArgs),
 }
@@ -72,8 +70,6 @@ pub enum QueryCmd {
 #[derive(Subcommand, Debug)]
 pub enum NavCmd {
     Guide(GuideArgs),
-    Entries(ListArg),
-    Clusters(ListArg),
     Quality(GraphArg),
     Health(ListArg),
     Report(ReportArgs),
@@ -141,34 +137,40 @@ pub struct SymbolsArgs {
     pub kind: Option<String>,
     #[arg(long, default_value_t = 50)]
     pub limit: usize,
+    #[arg(long)]
+    pub visibility: Option<String>,
+    #[arg(long, default_value_t = false)]
+    pub no_docs: bool,
+    #[arg(long, default_value_t = false)]
+    pub dead: bool,
+    #[arg(long, default_value_t = false)]
+    pub test_only: bool,
+    #[arg(long)]
+    pub min_callers: Option<usize>,
+    #[arg(long)]
+    pub max_callers: Option<usize>,
+    #[arg(long)]
+    pub min_degree: Option<usize>,
+    #[arg(long)]
+    pub max_degree: Option<usize>,
 }
 
 #[derive(Args, Debug)]
-pub struct SymbolArg {
+pub struct InspectArgs {
     pub name: String,
     #[arg(long)]
     pub graph: Vec<PathBuf>,
+    #[arg(long = "no-source", default_value_t = false)]
+    pub no_source: bool,
 }
 
 #[derive(Args, Debug)]
-pub struct FileArg {
-    pub path: String,
-    #[arg(long)]
-    pub graph: Vec<PathBuf>,
-}
-
-#[derive(Args, Debug)]
-pub struct ModuleArg {
+pub struct TraceArgs {
     pub name: String,
     #[arg(long)]
     pub graph: Vec<PathBuf>,
-}
-
-#[derive(Args, Debug)]
-pub struct WalkArg {
-    pub name: String,
-    #[arg(long)]
-    pub graph: Vec<PathBuf>,
+    #[arg(long, default_value = "both")]
+    pub direction: crate::query::TraceDirection,
     #[arg(long, default_value_t = 2)]
     pub depth: usize,
     #[arg(long, default_value_t = 100)]
@@ -176,11 +178,33 @@ pub struct WalkArg {
 }
 
 #[derive(Args, Debug)]
-pub struct SearchArgs {
-    pub query: String,
+pub struct FindArgs {
+    pub pattern: String,
     #[arg(long)]
     pub graph: Vec<PathBuf>,
+    #[arg(long, default_value = "text")]
+    pub mode: crate::query::FindMode,
     #[arg(long, default_value_t = 50)]
+    pub limit: usize,
+}
+
+#[derive(Args, Debug)]
+pub struct ScopeArgs {
+    pub target: String,
+    #[arg(long)]
+    pub graph: Vec<PathBuf>,
+    #[arg(long, default_value = "file")]
+    pub kind: crate::query::ScopeKind,
+}
+
+#[derive(Args, Debug)]
+pub struct ImpactArgs {
+    pub name: String,
+    #[arg(long)]
+    pub graph: Vec<PathBuf>,
+    #[arg(long, default_value_t = 2)]
+    pub depth: usize,
+    #[arg(long, default_value_t = 100)]
     pub limit: usize,
 }
 
@@ -217,6 +241,8 @@ pub struct MapArgs {
     pub graph: Vec<PathBuf>,
     #[arg(long, default_value_t = 8000)]
     pub budget: usize,
+    #[arg(long, default_value_t = false)]
+    pub full: bool,
 }
 
 #[derive(Args, Debug)]

@@ -9,6 +9,7 @@ pub struct PendingEdge {
     pub evidence: Option<Location>,
     pub source_file: Option<String>,
     pub resolution: ResolutionStrategy,
+    pub call_style: Option<String>,
 }
 
 #[derive(Clone, Copy)]

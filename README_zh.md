@@ -5,10 +5,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/rust-1.85%2B-orange.svg" alt="Rust">
-  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
-  <img src="https://img.shields.io/crates/v/crabmap.svg" alt="crates.io">
-  <img src="https://img.shields.io/badge/status-active-brightgreen.svg" alt="Status">
+  <img src="https://img.shields.io/crates/v/crabmap?style=flat-square&logo=rust" alt="crates.io">
+  <img src="https://img.shields.io/badge/rust-1.85%2B-ed8225?style=flat-square&logo=rust&logoColor=white" alt="Rust">
+  <img src="https://img.shields.io/badge/license-MIT-22C55E?style=flat-square" alt="License">
+  <img src="https://img.shields.io/crates/d/crabmap?style=flat-square&label=downloads" alt="Downloads">
   <a href="README.md">🇬🇧 English</a> · <a href="AGENTS_zh.md">📖 开发文档</a>
 </p>
 
@@ -43,11 +43,24 @@ cargo install crabmap
 crabmap index /path/to/rust/project
 # ✓ indexed 9089 nodes, 14355 edges in 168 files
 
-# 导出一份 AI 可读的架构地图
+# AI 架构概览（紧凑模式）
 crabmap nav map
+# --full 追加入口点和功能簇
 
-# 搜索任何符号
-crabmap query search "handle_connection"
+# 按名称查找
+crabmap query find "handler"
+# --mode similar 查找结构相似符号
+
+# 查看符号详情（附带源码）
+crabmap query inspect main
+
+# 追踪调用链（默认双向）
+crabmap query trace load_config
+# --direction up | down 单向追踪
+
+# 范围查询：文件或模块里有什么？
+crabmap query scope src/lib.rs
+# --kind module 查询模块声明
 
 # 在浏览器里交互式探索
 crabmap serve
@@ -63,39 +76,54 @@ crabmap serve
 crabmap index .                           # 索引当前项目
 crabmap index --all .                     # 发现并索引目录下所有 Cargo 项目
 crabmap index --no-tests                  # 跳过测试文件
+crabmap index --no-semantic               # 跳过 rust-analyzer 增强
 crabmap index --output custom.json.gz     # 自定义输出路径（gzip 压缩）
 ```
 
 ### `crabmap query` — 查询图谱
 
+**发现与理解**
+
 ```bash
-crabmap query stats                       # 节点/边统计
-crabmap query search "config"             # 模糊文本搜索
-crabmap query symbol main                 # 查看某个符号的详情
-crabmap query callees main --depth 3      # main 调用了谁？
-crabmap query callers load_config         # 谁调用了它？
-crabmap query impact Runtime --depth 2    # 完整依赖影响链
+crabmap query stats                       # 节点/边统计（按 kind/source/certainty 分类）
+crabmap query symbols --limit 10          # 符号列表（8 种 filter flag：--dead、--no-docs、--visibility…）
+crabmap query inspect main                # 符号详情 + 完整源码
+crabmap query find "config"               # 文本搜索（--mode similar 查找结构相似符号）
+crabmap query scope src/lib.rs            # 文件内容（--kind module 查询模块声明）
+```
+
+**追踪关系**
+
+```bash
+crabmap query trace main                  # 双向调用链（--direction up | down）
+crabmap query impact Runtime --depth 2    # 全面影响面：文件影响 + 调用点 + 修改建议
 crabmap query path main load_config       # 两个符号间的最短调用路径
+```
+
+**导出**
+
+```bash
+crabmap query export                      # JSON 导出（--format dot | mermaid）
 ```
 
 ### `crabmap nav` — 给 AI 的导航
 
 ```bash
-crabmap nav map           # token 预算内的项目概览（给 LLM 用的）
-crabmap nav guide         # 入口点 + 调用链
-crabmap nav clusters      # 按文件的特征聚类
-crabmap nav quality       # 图谱置信度评分
-crabmap nav health        # 循环依赖、上帝模块、死代码检测
+crabmap nav map               # 紧凑概览（~8k tokens，热点符号）
+crabmap nav map --full        # 追加入口点 + 功能簇
+crabmap nav quality           # 图谱置信度评分
+crabmap nav health            # 循环依赖、上帝模块、死代码
+crabmap nav report            # 生成 GRAPH_REPORT.md + AGENT_GUIDE.md
 ```
 
 ### `crabmap analyze` — 静态分析
 
 ```bash
-crabmap analyze deps      # 模块依赖矩阵
-crabmap analyze fanout    # 文件级扇入/扇出
-crabmap analyze tests     # 测试影响候选
-crabmap analyze hotspots  # Git 变更热点
-crabmap analyze diff      # 与 git base 的图谱差异
+crabmap analyze deps          # 模块依赖矩阵 + 编译影响链
+crabmap analyze fanout        # 文件级扇入/扇出
+crabmap analyze tests <name>  # 基于调用图的测试影响面（score + call path）
+crabmap analyze hotspots      # Git 变更热点
+crabmap analyze diff          # 与 git base 的图谱差异
 ```
 
 ### `crabmap serve` — Web 可视化
@@ -130,7 +158,7 @@ crabmap config --api-key sk-... --model gpt-4
 
 | 项目 | 节点 | 边 | Warnings | 质量分 |
 |:---|--:|--:|:--:|:--:|
-| crabmap（自举） | 899 | 1,676 | 0 | 99 |
+| crabmap（自举） | 1007 | 2,063 | 0 | 99 |
 | ripgrep | 9,089 | 14,355 | 0 | 96 |
 | tokio | 14,176 | 28,831 | 0 | 98 |
 
@@ -199,28 +227,34 @@ cargo build --release
 
 ```
 src/
-├── main.rs          # CLI 入口 & 命令分发
-├── cli.rs           # clap 参数定义
-├── analyzer.rs      # AST 索引器（syn 遍历）
-├── query.rs         # 图遍历 & 搜索
-├── model.rs         # 核心数据模型
-├── store.rs         # Gzip JSON 读写
-├── web.rs           # 嵌入式 HTTP 服务器
-├── semantic.rs      # rust-analyzer 语义增强
-├── mir.rs           # MIR 降级分析
-├── ai.rs            # AI 导航命令
-├── config.rs        # 全局配置 (~/.config/crabmap/)
-├── term.rs          # ANSI 终端颜色
-├── health.rs        # 架构风险检测
+├── main.rs            # CLI 入口 & 命令分发
+├── cli.rs             # clap 参数定义
+├── model.rs           # 核心数据模型（Node、Edge、CodeGraph）
+├── analyzer/          # AST 索引器（syn，6 个子模块）
+├── query/             # 图遍历、搜索、过滤（6 个子模块）
+│   ├── commands.rs    # inspect, trace, find, scope, impact
+│   ├── filter.rs      # SymbolFilter — 8 种轻量查询过滤器
+│   ├── similar.rs     # 基于调用集重叠的结构相似度分析
+│   └── source.rs      # 按行范围提取源码
+├── ai/                # AI 导航：map、guide、clusters、quality（5 个子模块）
+├── web/               # 嵌入式 HTTP 服务 + 可视化（6 个子模块）
+├── rag/               # 检索：词法 → embedding → 重排序（6 个子模块）
+├── semantic/          # rust-analyzer LSP 语义增强（3 个子模块）
+├── store.rs           # Gzip JSON 读写 + 多项目自动发现
+├── config.rs          # 全局配置（~/.config/crabmap/）
+├── health.rs          # 架构风险检测
+├── mir.rs             # MIR 降级分析
+├── deps.rs            # 模块依赖 + 编译影响估算
+├── test_impact.rs     # 基于调用图的测试影响分析
 └── …
 
 web/
 ├── index.html
-├── styles/          # CSS（深色主题）
-└── src/             # JS（微内核架构）
+├── styles/            # CSS（深色主题）
+└── src/               # JS（微内核架构）
 
 skills/
-└── crabmap.md     # AI Agent 使用指南
+└── crabmap.md         # AI Agent 使用指南
 ```
 
 ---

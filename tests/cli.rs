@@ -26,22 +26,24 @@ fn indexes_and_queries_rust_project() {
 
     let symbol = run([
         "query",
-        "symbol",
+        "inspect",
         "run_app",
+        "--no-source",
         "--graph",
         graph.to_str().unwrap(),
     ]);
-    assert_eq!(symbol["kind"], "symbol");
+    assert_eq!(symbol["kind"], "inspect");
     assert_eq!(symbol["node"]["name"], "run_app");
 
     let enum_symbol = run([
         "query",
-        "symbol",
+        "inspect",
         "ConfigMode",
+        "--no-source",
         "--graph",
         graph.to_str().unwrap(),
     ]);
-    assert_eq!(enum_symbol["kind"], "symbol");
+    assert_eq!(enum_symbol["kind"], "inspect");
     assert!(
         enum_symbol["outgoing"]
             .as_array()
@@ -52,12 +54,14 @@ fn indexes_and_queries_rust_project() {
 
     let callees = run([
         "query",
-        "callees",
+        "trace",
         "run_app",
+        "--direction",
+        "down",
         "--graph",
         graph.to_str().unwrap(),
     ]);
-    assert_eq!(callees["kind"], "callees");
+    assert_eq!(callees["kind"], "trace");
     assert!(
         callees["items"]
             .as_array()
@@ -68,27 +72,21 @@ fn indexes_and_queries_rust_project() {
 
     let search = run([
         "query",
-        "search",
+        "find",
         "config",
         "--graph",
         graph.to_str().unwrap(),
     ]);
-    assert_eq!(search["kind"], "search");
+    assert_eq!(search["kind"], "find");
     assert!(!search["items"].as_array().unwrap().is_empty());
 
-    let entries = run(["nav", "entries", "--graph", graph.to_str().unwrap()]);
-    assert_eq!(entries["kind"], "entries");
-    assert!(
-        entries["items"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|item| item["node"]["name"] == "run_app")
-    );
+    let entries = run(["nav", "map", "--full", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(entries["kind"], "map");
+    assert!(entries["content"].as_str().unwrap().contains("run_app"));
 
-    let clusters = run(["nav", "clusters", "--graph", graph.to_str().unwrap()]);
-    assert_eq!(clusters["kind"], "clusters");
-    assert!(!clusters["items"].as_array().unwrap().is_empty());
+    let clusters = run(["nav", "map", "--full", "--graph", graph.to_str().unwrap()]);
+    assert_eq!(clusters["kind"], "map");
+    assert!(!clusters["content"].as_str().unwrap().is_empty());
 
     let quality = run(["nav", "quality", "--graph", graph.to_str().unwrap()]);
     assert_eq!(quality["kind"], "quality");
@@ -198,7 +196,7 @@ fn queries_can_load_multiple_graphs() {
 
     let search = run([
         "query",
-        "search",
+        "find",
         "run_app",
         "--graph",
         graph_one.to_str().unwrap(),
@@ -259,8 +257,10 @@ fn self_index_reports_file_module_and_store_callees_correctly() {
 
     let file = run([
         "query",
-        "file",
+        "scope",
         "src/main.rs",
+        "--kind",
+        "file",
         "--graph",
         graph.to_str().unwrap(),
     ]);
@@ -272,8 +272,10 @@ fn self_index_reports_file_module_and_store_callees_correctly() {
 
     let module = run([
         "query",
-        "module",
+        "scope",
         "crabmap::model",
+        "--kind",
+        "module",
         "--graph",
         graph.to_str().unwrap(),
     ]);
@@ -285,8 +287,10 @@ fn self_index_reports_file_module_and_store_callees_correctly() {
 
     let callees = run([
         "query",
-        "callees",
+        "trace",
         "crabmap::store::load_many",
+        "--direction",
+        "down",
         "--graph",
         graph.to_str().unwrap(),
     ]);
@@ -482,12 +486,14 @@ fn query_callers_finds_upstream_callers() {
     let (graph, _temp) = index_fixture();
     let out = run([
         "query",
-        "callers",
+        "trace",
         "load_config",
+        "--direction",
+        "up",
         "--graph",
         graph.to_str().unwrap(),
     ]);
-    assert_eq!(out["kind"], "callers");
+    assert_eq!(out["kind"], "trace");
     let items = out["items"].as_array().unwrap();
     assert!(
         items.iter().any(|item| item["node"]["name"] == "run_app"),
@@ -658,8 +664,9 @@ fn error_symbol_not_found_suggests_alternatives() {
     let output = Command::new(env!("CARGO_BIN_EXE_crabmap"))
         .args([
             "query",
-            "symbol",
+            "inspect",
             "nonexistent_xyz",
+            "--no-source",
             "--graph",
             graph.to_str().unwrap(),
         ])
@@ -681,8 +688,9 @@ fn error_ambiguous_symbol_lists_matches() {
     // The tool returns exit code 0 with kind="ambiguous" in JSON
     let out = run([
         "query",
-        "symbol",
+        "inspect",
         "save",
+        "--no-source",
         "--graph",
         graph.to_str().unwrap(),
     ]);

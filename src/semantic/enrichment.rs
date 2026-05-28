@@ -1,5 +1,5 @@
 use crate::model::{
-    CodeGraph, Edge, EdgeCertainty, EdgeKind, EdgeSource, Location, Node, NodeKind, Range,
+    CodeGraph, Edge, EdgeCertainty, EdgeKind, EdgeSource, Location, Node, NodeKind,
     SemanticInfo,
 };
 use anyhow::{Context, Result, bail};
@@ -324,6 +324,7 @@ fn add_edge(
         weight: 1,
         source: EdgeSource::RustAnalyzer,
         certainty: EdgeCertainty::Confirmed,
+        call_style: None,
         profiles,
     });
     EdgeResult::Inserted

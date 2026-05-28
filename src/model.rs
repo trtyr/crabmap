@@ -147,6 +147,7 @@ pub struct Edge {
     pub weight: usize,
     pub source: EdgeSource,
     pub certainty: EdgeCertainty,
+    pub call_style: Option<String>,
     pub profiles: Vec<String>,
 }
 

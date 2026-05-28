@@ -149,6 +149,33 @@ pub fn find_line(source: &str, needle: &str) -> usize {
         .unwrap_or(1)
 }
 
+pub fn find_item_end_line(source: &str, start_line: usize) -> usize {
+    let mut depth: i32 = 0;
+    let mut found_open = false;
+    for (i, line) in source.lines().enumerate() {
+        let line_num = i + 1;
+        if line_num < start_line {
+            continue;
+        }
+        for ch in line.chars() {
+            match ch {
+                '{' => {
+                    depth += 1;
+                    found_open = true;
+                }
+                '}' => {
+                    depth -= 1;
+                    if found_open && depth == 0 {
+                        return line_num;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    start_line // fallback: single-line item or no braces
+}
+
 pub fn find_line_after(source: &str, needle: &str, start_line: usize) -> usize {
     source
         .lines()

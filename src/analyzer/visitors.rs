@@ -26,6 +26,7 @@ impl<'ast> Visit<'ast> for FunctionCollector<'_> {
             )),
             source_file: Some(self.relative.clone()),
             resolution: ResolutionStrategy::Callable,
+            call_style: Some("direct".to_string()),
         });
         visit::visit_expr_call(self, node);
     }
@@ -43,6 +44,7 @@ impl<'ast> Visit<'ast> for FunctionCollector<'_> {
             )),
             source_file: Some(self.relative.clone()),
             resolution: ResolutionStrategy::MethodOnly,
+            call_style: Some("method".to_string()),
         });
         visit::visit_expr_method_call(self, node);
     }
@@ -60,6 +62,7 @@ impl<'ast> Visit<'ast> for FunctionCollector<'_> {
             )),
             source_file: Some(self.relative.clone()),
             resolution: ResolutionStrategy::MacroOnly,
+            call_style: Some("macro".to_string()),
         });
         visit::visit_macro(self, node);
     }

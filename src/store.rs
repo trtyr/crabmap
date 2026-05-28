@@ -67,17 +67,48 @@ pub fn load(path: Option<&Path>) -> Result<CodeGraph> {
 }
 
 pub fn load_many(paths: &[PathBuf]) -> Result<CodeGraph> {
-    if paths.is_empty() {
-        return load(None);
+    if !paths.is_empty() {
+        let mut graphs = paths
+            .iter()
+            .map(|path| load(Some(path)))
+            .collect::<Result<Vec<_>>>()?;
+        return if graphs.len() == 1 {
+            Ok(graphs.remove(0))
+        } else {
+            merge(graphs)
+        };
     }
-    let mut graphs = paths
-        .iter()
-        .map(|path| load(Some(path)))
-        .collect::<Result<Vec<_>>>()?;
-    if graphs.len() == 1 {
-        return Ok(graphs.remove(0));
+    // No explicit paths: try default → auto-discover → fallback
+    let default = default_path(None)?;
+    if default.exists() {
+        return load(Some(&default));
     }
-    merge(graphs)
+    if let Some(graphs) = discover_graphs() {
+        return load_many(&graphs);
+    }
+    load(None)
+}
+
+fn discover_graphs() -> Option<Vec<PathBuf>> {
+    let dir = std::env::current_dir().ok()?.join(".crabmap");
+    if !dir.is_dir() {
+        return None;
+    }
+    let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .ok()?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            path.file_name()?.to_string_lossy().ends_with(".json.gz").then_some(path)
+        })
+        .collect();
+    files.sort();
+    files.dedup();
+    if files.is_empty() {
+        None
+    } else {
+        Some(files)
+    }
 }
 
 fn merge(graphs: Vec<CodeGraph>) -> Result<CodeGraph> {

@@ -41,6 +41,42 @@ pub fn deps(graph: &CodeGraph, from: Option<&str>, to: Option<&str>, limit: usiz
         }
         *deps.entry((from_cluster, to_cluster)).or_default() += edge.weight;
     }
+
+    // Build adjacency map for cluster-level dependency graph
+    let mut cluster_adj: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for ((from_c, to_c), _) in &deps {
+        cluster_adj
+            .entry(from_c.clone())
+            .or_default()
+            .insert(to_c.clone());
+    }
+
+    // recompile_impact: BFS from each source, find chains >= 3
+    let mut recompile_impact: Vec<Value> = Vec::new();
+    let all_sources: BTreeSet<String> = deps.keys().map(|(f, _)| f.clone()).collect();
+    for source in &all_sources {
+        let chain = bfs_chain(&cluster_adj, source, 5);
+        if chain.len() >= 3 {
+            recompile_impact.push(json!({
+                "from": source,
+                "to": chain.last().unwrap_or(source),
+                "chain": chain,
+                "chain_length": chain.len()
+            }));
+        }
+    }
+
+    // total_recompile_modules: find most-connected source, compute transitive closure
+    let total_recompile_modules = all_sources
+        .iter()
+        .map(|source| {
+            let closure = bfs_transitive_closure(&cluster_adj, source, 5);
+            (source, closure.len())
+        })
+        .max_by_key(|(_, count)| *count)
+        .map(|(_, count)| count)
+        .unwrap_or(0);
+
     let mut items = deps
         .into_iter()
         .map(|((from, to), weight)| json!({ "from": from, "to": to, "weight": weight }))
@@ -54,7 +90,9 @@ pub fn deps(graph: &CodeGraph, from: Option<&str>, to: Option<&str>, limit: usiz
     });
     json!({
         "kind": "deps",
-        "items": items.into_iter().take(limit).collect::<Vec<_>>()
+        "items": items.into_iter().take(limit).collect::<Vec<_>>(),
+        "recompile_impact": recompile_impact,
+        "total_recompile_modules": total_recompile_modules
     })
 }
 
@@ -125,4 +163,50 @@ fn cluster_key(file: &str) -> String {
         [first, second, ..] if *first == "bin" => format!("bin/{second}"),
         [first, second, ..] => format!("{first}/{second}"),
     }
+}
+
+fn bfs_chain(adj: &BTreeMap<String, BTreeSet<String>>, start: &str, max_depth: usize) -> Vec<String> {
+    use std::collections::VecDeque;
+    let mut visited = BTreeSet::new();
+    let mut queue = VecDeque::new();
+    let mut path = vec![start.to_string()];
+    visited.insert(start.to_string());
+    queue.push_back((start.to_string(), 1usize));
+    while let Some((current, depth)) = queue.pop_front() {
+        if depth > max_depth {
+            break;
+        }
+        if let Some(neighbors) = adj.get(&current) {
+            for next in neighbors {
+                if visited.insert(next.clone()) {
+                    path.push(next.clone());
+                    queue.push_back((next.clone(), depth + 1));
+                    break; // follow one branch to get longest chain
+                }
+            }
+        }
+    }
+    path
+}
+
+fn bfs_transitive_closure(adj: &BTreeMap<String, BTreeSet<String>>, start: &str, max_depth: usize) -> BTreeSet<String> {
+    use std::collections::VecDeque;
+    let mut visited = BTreeSet::new();
+    let mut queue = VecDeque::new();
+    visited.insert(start.to_string());
+    queue.push_back((start.to_string(), 0usize));
+    while let Some((current, depth)) = queue.pop_front() {
+        if depth >= max_depth {
+            continue;
+        }
+        if let Some(neighbors) = adj.get(&current) {
+            for next in neighbors {
+                if visited.insert(next.clone()) {
+                    queue.push_back((next.clone(), depth + 1));
+                }
+            }
+        }
+    }
+    visited.remove(start);
+    visited
 }

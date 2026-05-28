@@ -125,41 +125,35 @@ fn run() -> Result<()> {
                 args.query.as_deref(),
                 args.kind.as_deref(),
                 args.limit,
+                crate::query::SymbolFilter {
+                    visibility: args.visibility,
+                    no_docs: args.no_docs,
+                    dead: args.dead,
+                    test_only: args.test_only,
+                    min_callers: args.min_callers,
+                    max_callers: args.max_callers,
+                    min_degree: args.min_degree,
+                    max_degree: args.max_degree,
+                },
             )),
-            QueryCmd::Symbol(args) => {
-                Ok(query::symbol(&store::load_many(&args.graph)?, &args.name)?)
+            QueryCmd::Inspect(args) => {
+                Ok(query::inspect(&store::load_many(&args.graph)?, &args.name, !args.no_source)?)
             }
-            QueryCmd::File(args) => Ok(query::file(&store::load_many(&args.graph)?, &args.path)?),
-            QueryCmd::Module(args) => {
-                Ok(query::module(&store::load_many(&args.graph)?, &args.name)?)
+            QueryCmd::Trace(args) => {
+                Ok(query::trace(&store::load_many(&args.graph)?, &args.name, args.direction, args.depth, args.limit)?)
             }
-            QueryCmd::Callees(args) => Ok(query::neighbors(
-                &store::load_many(&args.graph)?,
-                &args.name,
-                "calls",
-                true,
-                args.depth,
-                args.limit,
-            )?),
-            QueryCmd::Callers(args) => Ok(query::neighbors(
-                &store::load_many(&args.graph)?,
-                &args.name,
-                "calls",
-                false,
-                args.depth,
-                args.limit,
-            )?),
+            QueryCmd::Find(args) => {
+                Ok(query::find(&store::load_many(&args.graph)?, &args.pattern, args.mode, args.limit))
+            }
+            QueryCmd::Scope(args) => {
+                Ok(query::scope(&store::load_many(&args.graph)?, &args.target, args.kind)?)
+            }
             QueryCmd::Impact(args) => Ok(query::impact(
                 &store::load_many(&args.graph)?,
                 &args.name,
                 args.depth,
                 args.limit,
             )?),
-            QueryCmd::Search(args) => Ok(query::search(
-                &store::load_many(&args.graph)?,
-                &args.query,
-                args.limit,
-            )),
             QueryCmd::Path(args) => Ok(query::path(
                 &store::load_many(&args.graph)?,
                 &args.from,
@@ -197,14 +191,12 @@ fn run() -> Result<()> {
                     args.limit,
                 ))
             }
-            NavCmd::Entries(args) => Ok(ai::entries(&store::load_many(&args.graph)?, args.limit)),
-            NavCmd::Clusters(args) => Ok(ai::clusters(&store::load_many(&args.graph)?, args.limit)),
             NavCmd::Quality(args) => Ok(ai::quality(&store::load_many(&args.graph)?)),
             NavCmd::Health(args) => Ok(health::health(&store::load_many(&args.graph)?, args.limit)),
             NavCmd::Report(args) => {
                 report::write(&store::load_many(&args.graph)?, args.output.as_deref())
             }
-            NavCmd::Map(args) => repo_map::map(&store::load_many(&args.graph)?, args.budget),
+            NavCmd::Map(args) => repo_map::map(&store::load_many(&args.graph)?, args.budget, args.full),
             NavCmd::Ask(args) => Ok(llm::ask(
                 &store::load_many(&args.graph)?,
                 &config::load()?,
