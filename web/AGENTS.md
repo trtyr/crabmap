@@ -1,10 +1,12 @@
 # web/ — Embedded Web UI
 
-**Generated:** 2026-05-21 · **Commit:** 2ebf59e
+**Generated:** 2026-05-29 · **Commit:** b9dae4c
 
 Dark-themed graph viewer embedded into the binary via `include_str!` in `src/web/assets.rs`. No build step, no npm, no bundler — pure vanilla JS + CSS loaded via `<script>` tags.
 
 ## Structure
+
+> **Backend counterpart:** `src/web/` (see `src/web/AGENTS.md`) — HTTP server, state management, API handlers. This file covers the frontend only.
 
 ```
 web/
@@ -101,5 +103,7 @@ status, graph, nodesById, nodePositions, rootId, selected, searchItems, view: {x
 
 - `include_str!` means **any web/ change requires `cargo build`** to take effect (assets embedded in `src/web/assets.rs`)
 - Script load order in `index.html` is critical — `core.js` must be first
-- Toolbar polls `/api/status` every 1.5s — check network tab if UI seems stale
+- Toolbar polls `/api/status` every 1.5s via `setInterval` with no cleanup — multiple page loads accumulate timers
 - Force-directed layout runs 90–150 iterations client-side; large graphs (200+ nodes) may lag
+- `graph-render.js` uses `innerHTML = ''` + full rebuild — O(n) DOM thrash per render
+- Auto-selects `crabmap::run` on load — hardcoded project-specific fallback

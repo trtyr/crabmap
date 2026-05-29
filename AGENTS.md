@@ -1,6 +1,8 @@
 # crabmap
 
-**Generated:** 2026-05-28 · **Commit:** 15b93e5 · **Branch:** main
+**Generated:** 2026-05-29 · **Commit:** b9dae4c · **Branch:** main
+
+> **Subdirectory guides:** `src/query/AGENTS.md` (query engine), `src/analyzer/AGENTS.md` (AST indexer), `web/AGENTS.md` (frontend), `src/web/AGENTS.md` (HTTP server)
 
 Rust code satellite map — index, query, and navigate your codebase. Single crate, edition 2024 (Rust ≥ 1.85), no workspace.
 
@@ -172,11 +174,18 @@ crabmap
 - Edge provenance: `source` (ast/rust_analyzer/mir/inferred) × `certainty` (definite/confirmed/inferred/possible).
 - **No environment variables** — all config goes through files.
 
+## Architecture Health
+
+- **Score**: 94/100
+- **Cycles**: 0
+- **God modules**: `src/query/` (71 meaningful symbols), `src/analyzer/` (94 meaningful symbols)
+- **Dead code**: 0 candidates
+
 ## Testing
 
-- 6 unit tests in `src/query/tests.rs` (symbol resolution, file/module/symbol queries, path failure).
-- 24 integration tests in `tests/cli.rs` (index, query, semantic, MIR, `--all`, profiles, self-index).
-- All 30 tests pass. Run: `cargo test`.
+- 9 unit tests in `src/query/tests.rs` (symbol resolution, file/module/symbol queries, path failure, risk scoring).
+- 33 integration tests in `tests/cli.rs` (index, query, semantic, MIR, `--all`, profiles, self-index, multi-graph).
+- All 42 tests pass. Run: `cargo test`.
 
 ## Known Limitations
 
@@ -187,6 +196,16 @@ crabmap
 - Large projects (10k+ nodes) untested — indexing performance and graph rendering may degrade.
 - proc macros and complex generics may produce incomplete call edges.
 - Calls inside macros (`eprintln!("{}", fn())`) are invisible to syn-based AST parsing; semantic enrichment (rust-analyzer) can fill some gaps.
+
+### Anti-Patterns (DO NOT Add)
+
+- **Blocking HTTP in request threads**: `reqwest::blocking::Client` in `llm.rs` + `rag/` blocks the entire thread — don't add more blocking IO to web server paths.
+- **`unwrap()` in hot paths**: Mutex `.lock().unwrap()` in `web/` poisons the server on any panic. Use error propagation or proper poison handling.
+- **Swallowed errors**: `let _ = handle(stream, &state)` in server.rs silently drops connection failures. Always log errors at minimum.
+- **More `include_str!`**: 15 embed points already in `src/web/assets.rs`. Each new one increases compile time and binary size. Consider dynamic serving for new assets.
+- **Duplicated index types**: `QueryIndex` and `AiIndex` are structurally identical — DRY before adding a third.
+- **`pub` visibility creep**: All internal types use `pub(crate)` or `pub(super)`. Only `model.rs` types get bare `pub`.
+- **Thread per request**: `thread::spawn` in server.rs has no bound, no join handle, no graceful shutdown. Use a thread pool or connection limit.
 
 ## Adding a New CLI Command
 

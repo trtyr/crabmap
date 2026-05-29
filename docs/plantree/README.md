@@ -12,6 +12,13 @@
 | Plan | Status | Description |
 |------|--------|-------------|
 | [health-optimization](plans/health-optimization/README.md) | In Progress | 健康评分优化：循环依赖、god modules、死代码清理 |
+| [python-map](plans/python-map/spec.md) | Planning | Python 版代码知识图谱工具，与 crabmap 功能对齐 |
+
+## Decisions
+
+| Decision | Date | Status |
+|----------|------|--------|
+| [opencode 子目录支持](decisions/opencode-subdirectory-support.md) | 2026-05-29 | Accepted |
 
 ## Baseline
 
