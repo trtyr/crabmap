@@ -1,4 +1,4 @@
-use super::commands::{file, module, neighbors, symbol};
+use super::commands::{file, impact, module, neighbors, symbol};
 use super::traversal::path;
 use crate::model::{
     BuildProfile, CodeGraph, Edge, EdgeCertainty, EdgeKind, EdgeSource, Node, NodeKind, Package,
@@ -332,4 +332,153 @@ fn node(
         docs: None,
         metrics: BTreeMap::new(),
     }
+}
+
+// ── Risk scoring tests for query impact ──
+
+fn risk_graph() -> CodeGraph {
+    // Build a graph where:
+    //   caller_a (file_a.rs) -> target_fn
+    //   caller_b (file_b.rs) -> target_fn
+    //   caller_c (file_c.rs) -> target_fn (method style)
+    //   target_fn -> dep1, dep2, ...
+    CodeGraph {
+        schema_version: 1,
+        project: project(),
+        nodes: vec![
+            node("function:test::target_fn", NodeKind::Function, "target_fn", "test::target_fn", "src/target.rs", 10),
+            node("function:test::caller_a", NodeKind::Function, "caller_a", "test::caller_a", "src/a.rs", 5),
+            node("function:test::caller_b", NodeKind::Function, "caller_b", "test::caller_b", "src/b.rs", 5),
+            node("function:test::caller_c", NodeKind::Function, "caller_c", "test::caller_c", "src/c.rs", 5),
+            node("function:test::dep1", NodeKind::Function, "dep1", "test::dep1", "src/dep.rs", 20),
+            node("function:test::dep2", NodeKind::Function, "dep2", "test::dep2", "src/dep.rs", 25),
+        ],
+        edges: vec![
+            // 3 callers from 3 different files
+            Edge {
+                from: "function:test::caller_a".to_string(),
+                to: "function:test::target_fn".to_string(),
+                kind: EdgeKind::Calls,
+                label: None,
+                evidence: None,
+                weight: 1,
+                source: EdgeSource::Ast,
+                certainty: EdgeCertainty::Definite,
+                call_style: Some("direct".to_string()),
+                profiles: vec![],
+            },
+            Edge {
+                from: "function:test::caller_b".to_string(),
+                to: "function:test::target_fn".to_string(),
+                kind: EdgeKind::Calls,
+                label: None,
+                evidence: None,
+                weight: 1,
+                source: EdgeSource::Ast,
+                certainty: EdgeCertainty::Definite,
+                call_style: Some("direct".to_string()),
+                profiles: vec![],
+            },
+            Edge {
+                from: "function:test::caller_c".to_string(),
+                to: "function:test::target_fn".to_string(),
+                kind: EdgeKind::Calls,
+                label: None,
+                evidence: None,
+                weight: 1,
+                source: EdgeSource::Ast,
+                certainty: EdgeCertainty::Definite,
+                call_style: Some("method".to_string()),
+                profiles: vec![],
+            },
+            // target depends on dep1 and dep2
+            Edge {
+                from: "function:test::target_fn".to_string(),
+                to: "function:test::dep1".to_string(),
+                kind: EdgeKind::Calls,
+                label: None,
+                evidence: None,
+                weight: 1,
+                source: EdgeSource::Ast,
+                certainty: EdgeCertainty::Definite,
+                call_style: None,
+                profiles: vec![],
+            },
+            Edge {
+                from: "function:test::target_fn".to_string(),
+                to: "function:test::dep2".to_string(),
+                kind: EdgeKind::Calls,
+                label: None,
+                evidence: None,
+                weight: 1,
+                source: EdgeSource::Ast,
+                certainty: EdgeCertainty::Definite,
+                call_style: None,
+                profiles: vec![],
+            },
+        ],
+        warnings: vec![],
+        semantic: None,
+        mir: None,
+        profiles: vec![profile()],
+        generated_at_ms: 0,
+    }
+}
+
+#[test]
+fn impact_includes_risk_scoring() {
+    let graph = risk_graph();
+
+    let result = impact(&graph, "target_fn", 2, 100).unwrap();
+
+    let risk = &result["risk"];
+    // 3 files(9) + 3 callers(3) + pub(3) + method(2) = 17 → critical
+    assert_eq!(risk["level"], "critical", "3 files + method caller + pub should be critical");
+    assert!(risk["score"].as_u64().unwrap() >= 15, "risk score should be >= 15");
+
+    let factors = &risk["factors"];
+    assert_eq!(factors["files_affected"], 3);
+    assert_eq!(factors["direct_callers"], 3);
+    assert_eq!(factors["is_public"], true);
+    assert_eq!(factors["has_method_callers"], true);
+}
+
+#[test]
+fn impact_risk_level_low_for_no_callers() {
+    let graph = CodeGraph {
+        schema_version: 1,
+        project: project(),
+        nodes: vec![
+            node("function:test::orphan", NodeKind::Function, "orphan", "test::orphan", "src/orphan.rs", 1),
+        ],
+        edges: vec![],
+        warnings: vec![],
+        semantic: None,
+        mir: None,
+        profiles: vec![profile()],
+        generated_at_ms: 0,
+    };
+
+    let result = impact(&graph, "orphan", 2, 100).unwrap();
+
+    assert_eq!(result["risk"]["level"], "low");
+    assert_eq!(result["risk"]["score"], 0);
+    assert_eq!(result["risk"]["factors"]["files_affected"], 0);
+    assert_eq!(result["risk"]["factors"]["direct_callers"], 0);
+}
+
+#[test]
+fn impact_change_hints_contain_actionable_recommendations() {
+    let graph = risk_graph();
+
+    let result = impact(&graph, "target_fn", 2, 100).unwrap();
+
+    let hints = result["change_hints"].as_array().unwrap();
+    assert!(!hints.is_empty(), "should have change hints");
+    // Should have at least one hint about file spread
+    let hints_text: Vec<&str> = hints.iter().filter_map(|h| h.as_str()).collect();
+    assert!(
+        hints_text.iter().any(|h| h.contains("file")),
+        "should mention file spread"
+    );
 }

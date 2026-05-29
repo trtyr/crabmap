@@ -63,6 +63,7 @@ pub enum QueryCmd {
     Find(FindArgs),
     Scope(ScopeArgs),
     Impact(ImpactArgs),
+    Risk(ImpactArgs),
     Path(PathArgs),
     Export(ExportArgs),
 }
@@ -85,6 +86,8 @@ pub enum AnalyzeCmd {
     Tests(TestsArgs),
     Hotspots(GitArgs),
     Diff(DiffArgs),
+    #[command(name = "refactor-order")]
+    RefactorOrder(RefactorOrderArgs),
 }
 
 #[derive(Args, Debug)]
@@ -357,4 +360,15 @@ pub enum ExportFormat {
     Json,
     Dot,
     Mermaid,
+}
+
+#[derive(Args, Debug)]
+pub struct RefactorOrderArgs {
+    /// Symbol names to compute refactoring order for
+    #[arg(required = true)]
+    pub symbols: Vec<String>,
+    #[arg(long)]
+    pub graph: Vec<PathBuf>,
+    #[arg(long, default_value_t = 50)]
+    pub limit: usize,
 }

@@ -287,43 +287,126 @@ pub fn impact(graph: &CodeGraph, name: &str, depth: usize, limit: usize) -> Resu
         }
     }
 
-    // 3. change_hints: heuristic analysis
-    let mut change_hints: Vec<String> = Vec::new();
+    // 3. Risk assessment
     let unique_files: BTreeSet<&str> = callers
         .iter()
         .filter_map(|item| item.get("file").or_else(|| item.get("node")?.get("file")))
         .filter_map(Value::as_str)
         .collect();
     let file_count = unique_files.len();
-    if file_count == 0 {
-        change_hints.push("Safe to remove — no callers found".to_string());
-    } else if file_count >= 3 {
-        change_hints.push(format!(
-            "High: changes propagate to {} files",
-            file_count
-        ));
-    } else {
-        change_hints.push(format!(
-            "Low: contained change ({} file{})",
-            file_count,
-            if file_count == 1 { "" } else { "s" }
-        ));
-    }
-    if node.visibility.as_deref() == Some("pub") && !callers.is_empty() {
-        change_hints.push("Consider deprecation period — symbol is pub and has callers".to_string());
-    }
+    let call_site_count = call_sites.len();
+    let is_pub = node.visibility.as_deref() == Some("pub");
     let has_method_caller = call_sites.iter().any(|cs| {
         cs.get("call_style")
             .and_then(Value::as_str)
             .is_some_and(|s| s == "method")
     });
+    let dep_count = dependencies.len();
+
+    // Risk score: 0-20+ scale
+    //   0-2: low (contained, few callers)
+    //   3-7: medium (moderate spread)
+    //   8-14: high (wide impact)
+    //   15+: critical (core infrastructure)
+    let mut risk_score: usize = 0;
+    risk_score += file_count * 3;
+    risk_score += call_site_count;
+    if is_pub && call_site_count > 0 {
+        risk_score += 3;
+    }
     if has_method_caller {
-        change_hints.push("Check trait impls for breaking changes — method call style detected".to_string());
+        risk_score += 2;
+    }
+    if dep_count > 20 {
+        risk_score += 2;
+    }
+
+    let risk_level = match risk_score {
+        0..=2 => "low",
+        3..=7 => "medium",
+        8..=14 => "high",
+        _ => "critical",
+    };
+
+    // 4. change_hints: actionable recommendations
+    let mut change_hints: Vec<String> = Vec::new();
+
+    // File spread assessment
+    if file_count == 0 {
+        change_hints.push("Safe to remove — no callers found".to_string());
+    } else if file_count == 1 {
+        change_hints.push(format!(
+            "Contained change — 1 file affected"
+        ));
+    } else if file_count <= 3 {
+        change_hints.push(format!(
+            "Moderate spread — {} files affected, review each",
+            file_count
+        ));
+    } else {
+        change_hints.push(format!(
+            "Wide impact — {} files affected, consider staged rollout",
+            file_count
+        ));
+    }
+
+    // Visibility warnings
+    if is_pub && call_site_count > 0 {
+        change_hints.push(
+            "Public API with callers — consider deprecation period or compatibility shim".to_string()
+        );
+    }
+
+    // Method call warnings
+    if has_method_caller {
+        change_hints.push(
+            "Method call style detected — check trait impls for breaking changes".to_string()
+        );
+    }
+
+    // High dependency warning
+    if dep_count > 20 {
+        change_hints.push(format!(
+            "High dependency count ({}) — changes here may trigger cascading recompiles",
+            dep_count
+        ));
+    }
+
+    // Actionable next steps based on risk level
+    match risk_level {
+        "low" => {
+            change_hints.push("Next: run tests for affected file(s) only".to_string());
+        }
+        "medium" => {
+            change_hints.push(
+                "Next: run `crabmap analyze tests <symbol>` to find test candidates".to_string(),
+            );
+        }
+        "high" | "critical" => {
+            change_hints.push(
+                "Next: run `crabmap analyze tests <symbol>` + full test suite".to_string(),
+            );
+            change_hints.push(
+                "Consider: run `crabmap nav health` to check for architectural risks".to_string(),
+            );
+        }
+        _ => {}
     }
 
     Ok(json!({
         "kind": "impact",
         "root": node_value(&index, node),
+        "risk": {
+            "score": risk_score,
+            "level": risk_level,
+            "factors": {
+                "files_affected": file_count,
+                "direct_callers": call_site_count,
+                "is_public": is_pub,
+                "has_method_callers": has_method_caller,
+                "dependency_count": dep_count
+            }
+        },
         "callers": callers,
         "dependents": dependents,
         "dependencies": dependencies,

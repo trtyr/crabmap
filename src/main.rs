@@ -154,6 +154,12 @@ fn run() -> Result<()> {
                 args.depth,
                 args.limit,
             )?),
+            QueryCmd::Risk(args) => Ok(query::risk(
+                &store::load_many(&args.graph)?,
+                &args.name,
+                args.depth,
+                args.limit,
+            )?),
             QueryCmd::Path(args) => Ok(query::path(
                 &store::load_many(&args.graph)?,
                 &args.from,
@@ -239,6 +245,11 @@ fn run() -> Result<()> {
                 &args.base,
                 args.limit,
             ),
+            AnalyzeCmd::RefactorOrder(args) => Ok(query::refactor_order(
+                &store::load_many(&args.graph)?,
+                &args.symbols,
+                args.limit,
+            )?),
         },
         Command::Config(args) => {
             if args.api_key.is_some()
