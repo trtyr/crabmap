@@ -20,6 +20,7 @@ pub(crate) fn detect_rust_analyzer() -> Option<String> {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
+        .map_err(|e| eprintln!("warning: failed to execute {}: {e}", candidate.display()))
         .ok()?;
     status
         .success()
@@ -114,6 +115,8 @@ pub(crate) fn path_uri(path: &Path) -> anyhow::Result<String> {
 }
 
 pub(crate) fn uri_path(uri: &str) -> Option<PathBuf> {
+    // Graceful fallback: non-file URIs (e.g. stdlib) and malformed URIs return None.
+    // Callers handle None by falling back to AST-only resolution.
     Url::parse(uri).ok()?.to_file_path().ok()
 }
 

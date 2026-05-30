@@ -126,7 +126,11 @@ fn run_mir(
     }
     let output = command.arg("--").arg("-Z").arg("unpretty=mir").output()?;
     if !output.status.success() {
-        anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        anyhow::bail!(
+            "MIR compilation failed for {}:\n{stderr}",
+            manifest.display()
+        );
     }
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }

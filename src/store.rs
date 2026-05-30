@@ -96,14 +96,31 @@ pub fn load_many(paths: &[PathBuf]) -> Result<CodeGraph> {
 }
 
 fn discover_graphs() -> Option<Vec<PathBuf>> {
-    let dir = std::env::current_dir().ok()?.join(".crabmap");
+    let dir = match std::env::current_dir() {
+        Ok(cwd) => cwd.join(".crabmap"),
+        Err(e) => {
+            eprintln!("warning: cannot get current directory ({e}), skipping auto-discovery");
+            return None;
+        }
+    };
     if !dir.is_dir() {
         return None;
     }
-    let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
-        .ok()?
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
+    let mut files: Vec<PathBuf> = match std::fs::read_dir(&dir) {
+        Ok(iter) => iter,
+        Err(e) => {
+            eprintln!("warning: cannot read {} ({e}), skipping auto-discovery", dir.display());
+            return None;
+        }
+    }
+    .filter_map(|entry| {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(err) => {
+                    eprintln!("warning: cannot read directory entry: {err}");
+                    return None;
+                }
+            };
             let path = entry.path();
             path.file_name()?.to_string_lossy().ends_with(".json.gz").then_some(path)
         })

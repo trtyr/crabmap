@@ -25,7 +25,9 @@ pub fn diff(
         .lines()
         .map(ToString::to_string)
         .collect::<Vec<_>>();
-    let base_graph = build_base_graph(&root, base).ok();
+    let base_graph = build_base_graph(&root, base)
+        .map_err(|e| eprintln!("warning: failed to build base graph for diff: {e:#}"))
+        .ok();
     let current_edges = edge_set(graph);
     let (added_edges, removed_edges) = base_graph
         .as_ref()
@@ -87,7 +89,8 @@ fn build_base_graph(root: &std::path::Path, base: &str) -> Result<CodeGraph> {
         .output()
         .with_context(|| format!("failed to archive {base}"))?;
     if !archive.status.success() {
-        anyhow::bail!("{}", String::from_utf8_lossy(&archive.stderr));
+        let stderr = String::from_utf8_lossy(&archive.stderr).trim().to_string();
+        anyhow::bail!("git archive {base} failed:\n{stderr}");
     }
     let mut tar = Command::new("tar")
         .arg("-x")
@@ -103,7 +106,10 @@ fn build_base_graph(root: &std::path::Path, base: &str) -> Result<CodeGraph> {
         .write_all(&archive.stdout)?;
     let status = tar.wait()?;
     if !status.success() {
-        anyhow::bail!("failed to unpack base archive");
+        anyhow::bail!(
+            "tar unpack failed with exit code {base}: {}",
+            status.code().map_or("unknown".to_string(), |c| c.to_string())
+        );
     }
     analyzer::index_project(
         temp.path(),

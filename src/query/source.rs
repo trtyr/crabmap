@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use serde_json::{Value, json};
 use std::fs;
 
-use super::find::find_nodes;
+use super::find::{find_nodes, suggest};
 use super::index::QueryIndex;
 use super::traversal::node_value;
 
@@ -11,7 +11,8 @@ pub fn source(graph: &CodeGraph, name: &str) -> Result<Value> {
     let index = QueryIndex::new(graph);
     let matches = find_nodes(graph, name);
     if matches.is_empty() {
-        anyhow::bail!("symbol `{name}` not found");
+        let names: Vec<&str> = graph.nodes.iter().map(|n| n.name.as_str()).collect();
+        anyhow::bail!("symbol `{name}` not found{}", suggest(name, &names, 3));
     }
     if matches.len() > 1 {
         return Ok(json!({
