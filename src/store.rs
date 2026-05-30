@@ -63,6 +63,12 @@ pub fn save_project(project: &Path, output: Option<&Path>, graph: &CodeGraph) ->
 
 pub fn load(path: Option<&Path>) -> Result<CodeGraph> {
     let path = default_path(path)?;
+    if !path.exists() {
+        anyhow::bail!(
+            "graph file not found: {}\nRun `crabmap index` first to build the code graph.",
+            path.display()
+        );
+    }
     read_graph(&path).with_context(|| format!("failed to read {}", path.display()))
 }
 
